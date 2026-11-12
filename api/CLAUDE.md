@@ -4442,3 +4442,244 @@ matches is a **failure**, not a pass; a mutant that **does not compile** was nev
 
 - `internal/reporting/{value,bucketkey,row,field,formula,eval,accumulator,model,validate,engine,invariants,golden,property,fuzz,passthrough,adversarial}_test.go`
 - `internal/reporting/receiptsource/receiptsource_test.go`
+
+## Reimbursement claims (fork feature)
+
+A **claim** bundles receipts of one group that were submitted together for reimbursement (a travel
+voucher, an allowance claim), with a **ledger** of what happened afterwards: payments received,
+recoupments (money the other party took back) and notes. It exists so the user keeps their own
+record of what was claimed, when, what was paid and what was taken back.
+
+The feature lives in its own files so upstream merges stay clean: `models/claim.go`,
+`commands/{upsert_claim,upsert_claim_ledger_entry,claim_receipts}_command.go` +
+`commands/claim_values.go`, `repositories/claims.go`, `services/claims.go`, `handlers/claims.go`,
+`routers/claim.go`, `structs/reimbursement_claim.go` (not `claims.go`: that is the JWT `Claims`).
+The swagger tag is **`ReimbursementClaim`** so the generated services (`ReimbursementClaimService`,
+`ReimbursementClaimApi`) stay clear of the desktop's hand-written `ClaimsService`; paths are under
+`/claim`, schemas are `Claim*` / `UpsertClaim*`, and both blocks in `swagger.yml` are fenced with
+`# --- Claims (fork feature)` comments.
+
+### Data model
+
+- **`claims`**: group, name, reference number, free-text type (column `claim_type`), status,
+  `submitted_date` / `due_date` (calendar days, stored as midnight UTC like `receipts.date`), an
+  optional explicit `claimed_amount` (`decimal(10,2)`), notes.
+- **`claim_receipts`**: the link table. **`receipt_id` is the primary key**, which is what makes "a
+  receipt is in at most one claim" a database guarantee. A column on `receipts` was rejected so the
+  receipt model, its payloads and its change history stay untouched.
+- **`claim_ledger_entries`**: `entry_type` (PAYMENT / RECOUPMENT / NOTE), date, optional amount
+  (always positive; the type gives the direction), note.
+- **Every foreign key cascades** (claim → group, link → receipt, link/entry → claim). That is what
+  lets `GroupService.DeleteGroup` and `UserService.DeleteUser`, which delete receipts and groups
+  outright, finish without knowing claims exist. `DeleteClaim` still deletes its children
+  explicitly, so it does not depend on the pragma (`TestClaimRepository_DeleteClaimRemovesChildrenWithoutForeignKeys`).
+- **Migration** is plain AutoMigrate of three new tables through `makeClaimMigrations()`, called at
+  the end of `MakeMigrations` (after the main list, so the referenced tables exist). No data
+  migration. Every keyed string column has an explicit `size` for MySQL.
+
+### Status and entry type are plain strings
+
+Statuses: DRAFT, SUBMITTED, PARTIALLY_PAID, PAID, DISPUTED, CLOSED, set by hand with **no state
+machine**. `models.ClaimStatusAwaitsSettlement` (SUBMITTED, PARTIALLY_PAID, DISPUTED) decides what
+counts as waiting; it rides the response as `awaitingSettlement`. Both status and entry type are
+`type: string` in swagger, never enums (the closed-Dart-enum outages): the server validates on write,
+reads tolerate anything, and an unknown entry type counts toward no figure.
+
+### Permissions: the existing receipt keys, no new ones
+
+Reads gate on **`group.receipts.read`**, every write on **`group.receipts.update`**, in the claim's
+own group. Adding keys would mean new `Permission` enum values, which released mobile builds parse as
+a closed set. Endpoints by id load the claim's `group_id` first (`handleClaimRequest`) and then go
+through `HandleRequest`; a missing claim gets the same 403 as a forbidden one.
+
+### What a viewer sees, and so what the figures cover
+
+Every figure is computed from exactly what the response shows, and nothing says that anything was
+left out (even a "partial" flag would leak presence under member isolation):
+
+- **Linked receipts** pass through `FilterReceiptsByPaidBy` (paid-by visibility, which already folds
+  in member isolation). A hidden receipt is absent from `receiptIds` and from every receipt figure.
+- **In a group with isolated members**, a claim or ledger entry recorded by a member the viewer
+  cannot see is dropped, as comments are (`claimVisibility.creatorVisible`, over
+  `GetVisibleUserIdsForUserInGroup`). In any other group everything is visible.
+- **Category/tag grants are irrelevant**: a claim returns receipt ids, never receipt contents.
+
+### Receipts carry their claim
+
+`Receipt.claimId` / `claimName` are `gorm:"-"` projections, `omitempty` (absent, never `null` or `0`,
+when the receipt is in no claim). `ClaimService.LoadReceiptClaims` / `LoadReceiptClaim` fill them from
+one batched query (`GetClaimLinksForGroupReceipts`, so only a link the claim actually shows counts), an
+explicit loader and not a GORM hook. It is called where a receipt is built for a client: the paged list,
+`GetReceiptsForGroupIds`, `ReceiptService.GetReceiptForUser`, the create and update responses and the
+bulk status response. It is deliberately **not** inside `MaskReceipt(s)ForMemberVisibility`, which also
+feeds exports, reports and history snapshots that must not carry it. Search returns `SearchResult`, not
+receipts, so it is untouched. **Visibility is the claim list's own rule** (`creatorVisible` on the
+claim's group and creator): a receipt whose claim is hidden reads exactly like one in no claim. The
+fields are read-only: requests bind `UpsertReceiptCommand`, which has no such keys. `AddReceiptsToClaim`
+uses the same rule to say `already in claim '<name>'` (else the old wording).
+
+### Figures
+
+`foldClaim` (pure, so tested without a DB): `receiptsTotal`; `effectiveClaimedAmount` = the explicit
+amount if set, else the receipts total; `paidAmount` = payments − recoupments (can be negative);
+`outstandingAmount` = effective − paid (negative when overpaid); `daysWaiting` = calendar days from
+`submittedDate` to **today in the app time zone** (`todayInAppZone`), only while awaiting settlement,
+never negative. Money is folded with `shopspring/decimal`, **never a SQL SUM**, and goes out as a
+two-place decimal string. The list summary adds `outstandingAmount` over the awaiting claims only.
+
+### Endpoints
+
+`GET`/`POST /claim/group/{groupId}` (list / create), `GET`/`PUT`/`DELETE /claim/{claimId}`,
+`POST /claim/{claimId}/addReceipts` and `/removeReceipts`, `POST /claim/{claimId}/ledgerEntry`,
+`PUT`/`DELETE /claim/{claimId}/ledgerEntry/{ledgerEntryId}`.
+
+- **PUT is a full replace of the claim's own fields**; an omitted optional field is cleared. That is
+  safe only because nothing a client might hide lives on the command: receipts and entries have
+  their own endpoints, so a restricted editor's save can never drop a hidden receipt. **A field added
+  to `UpsertClaimCommand` later must be a pointer that leaves the stored value alone when nil**, or an
+  older client's save clears it.
+- **The All group lists claims** of every group where the caller holds `group.receipts.read`
+  (`readableGroupIds`, the same per-group gate as the receipts list). It is **never a destination**:
+  create there is a 400.
+- **Add/remove report per receipt** (`ClaimReceiptsResult`, both lists always `[]`), like bulk
+  delete. A receipt that is missing, in another group or hidden gets one message, so a failure never
+  reveals that a receipt exists. A receipt already in **another** claim is refused, never moved; one
+  already in this claim counts as added. The responses carry only ids the caller sent, so the client
+  refetches the claim for its figures.
+- **Every read is a GET and every write a plain write**, so `middleware/api_key_scope.go`'s
+  read-over-POST allowlist needed nothing (`middleware/api_key_scope_claims_test.go`).
+- Money accepts a string or a number; `""`, whitespace and `null` are no value (`OptionalAmount`),
+  because the desktop's currency mask sends `""`. Amounts: at most two places, below 100,000,000.
+
+### Receipts in a claim cannot be deleted
+
+`DELETE /receipt/{id}` answers **400 naming the claim** ("remove it from claim '…' first") and
+`POST /receipt/bulkDelete` reports it as an ordinary per-receipt failure, whatever the claim's status.
+The guard is `ClaimService.ReceiptDeletionRefusals`, called from `handlers.DeleteReceipt` (through
+`refuseDeletingReceiptInClaim`) and from `ReceiptService.BulkDeleteReceiptsForUser`, after the
+existing permission checks, so a hidden receipt still reads as denied. The claim is named only when
+the caller may see it. **It is deliberately not inside `ReceiptService.DeleteReceipt`**: group delete
+and user delete call that too, and must still finish; there the link goes with the cascade.
+
+### A receipt that moves group leaves its claim
+
+`ReceiptRepository.UpdateReceipt` calls `DetachReceiptFromClaims` inside its transaction when the
+group changes. Reads also require `receipts.group_id = claims.group_id`, as a second line of defence,
+and `AddReceiptsToClaim` replaces such a stale link rather than being blocked by it. Moving the
+receipt back does **not** rejoin it to the old claim.
+
+### Shared files this feature edits
+
+Kept to a few lines each: `repositories/db.go` (`MakeMigrations` calls `makeClaimMigrations`),
+`routers/router.go` (one `Mount`), `repositories/receipts.go` (`UpdateReceipt`'s detach on a group
+move), `handlers/receipts.go` (`DeleteReceipt`'s refusal) and `services/receipts.go`
+(`BulkDeleteReceiptsForUser`'s refusal). The claim packet adds `services/receipt_csv.go` (the
+optional `ImageNames` field and its column) and one new file in a shared package,
+`reporting/render/format_currency.go` (an exported `FormatCurrency` wrapper).
+
+### Tests
+
+`commands/claim_commands_test.go` (validation, blank and numeric amounts, as-written days),
+`services/claims_fold_test.go` (every figure, decimal precision, negative outstanding, unknown status
+and type, the summary, the app-zone "today"), `repositories/claims_test.go` (round trip, one claim per
+receipt, the cascades, `DeleteClaim` with foreign keys off, the group-move detach, stale links, the
+clearing update), `handlers/claims_test.go` (the permission matrix, missing reads like forbidden, the
+All group both ways, per-receipt add/remove results, `[]` on the wire, paid-by and isolation
+filtering, ledger lifecycle, both delete refusals). The group-move detach, the bulk refusal and the
+paid-by filter were each mutation-checked: disabling them fails a named test.
+The wire, against the real desktop, is covered by `desktop/e2e/claims.spec.ts`.
+
+### Claim packet (`GET /claim/{claimId}/packet`)
+
+One zip per claim that a finance clerk can read without this app, and that shows nothing was changed
+afterwards. It delivers `FORK_ROADMAP.md` items 1 and 2 for a claim's receipts. Files:
+`services/claim_packet.go` (the build, the zip, the manifest, naming, bounds),
+`services/claim_packet_html.go` (the PDF's view model, the category fold, the template),
+`services/claim_packet_images.go` (the downscale), `handlers/claim_packet.go`, one route in
+`routers/claim.go`.
+
+- **Contract.** `operationId: getClaimPacket`, tag `ReimbursementClaim`, declared as
+  `application/octet-stream` binary like the exports so the generated TypeScript returns a `Blob`;
+  the server actually sends `Content-Type: application/zip`, `Content-Length`, and
+  `Content-Disposition: attachment; filename=<ClaimName>_packet_<yyyy-MM-dd>.zip` (the name reduced
+  to ASCII letters, digits and `_`; the date is today in the app zone). Gated through
+  `handleClaimRequest` on `group.receipts.read`, so a missing claim is the usual 403; a claim over a
+  bound is a **400** with a message; anything else a 500. Purely additive: no schema changed.
+- **Zip layout**: `images/<receiptDate>_<receiptName>_<receiptId>_<n>.<ext>` (the original bytes,
+  `zip.Store`), `receipts.csv`, `items.csv`, `packet.pdf`, `manifest.json`, in that write order. The
+  extension comes from the type sniffed at upload (`FileData.FileType` via `mimetype.Lookup`), then
+  the uploaded name, then `bin`. `n` counts from 1 in image id order.
+- **`manifest.json`**: `formatVersion` (1), a `note`, `generatedAt` (RFC 3339 in the app zone),
+  `generatedBy` (username), `timeZone`, `claim` (the same `ClaimView` `GET /claim/{id}` returns),
+  `receiptIds` (the receipts printed, by date), `files` (`path`, `size`, `sha256`, plus `receiptId`
+  and `originalName` for images) and `missingImages`. Hashes are over the **uncompressed bytes as
+  written into the zip** (what `sha256sum` gives on an extracted file), computed in the same write
+  (`packetZip.add`). The manifest does not list itself. `packet.pdf` also prints each image's
+  SHA-256 under it, which works because each original is read before the HTML is built.
+- **`packet.pdf`**, in order: a cover (name, reference, type, status, submitted/due, the figures with
+  days waiting when present, notes, "generated on … by …"); the ledger (oldest first, as the claim
+  view orders it); a receipts table grouped by category with subtotals and the grand total; then one
+  page-broken section per receipt (fields, non-empty custom fields, items, comments with author and
+  app-zone time, then each image). Money uses the app's currency display but **always shows cents**
+  (`packetCurrencyFormat` forces `HideDecimals` off), through `render.FormatCurrency`.
+- **Multi-category receipts** are listed under **each** of their categories with the full amount and
+  marked `*`; a note under the table gives the sum of the subtotals next to the total and how many
+  receipts are listed more than once. The grand total counts each receipt once. A receipt with no
+  category the viewer can see goes under **Uncategorised**, last; the rest sort by name.
+  `foldPacketCategories` is pure and folds with `decimal`.
+- **Visibility is the claim's.** `ClaimService.GetClaimForUser` decides the receipt ids (paid-by,
+  member isolation); `loadPacketReceipts` loads them in full, re-checks group and paid-by on the
+  loaded rows, then applies `FilterReceiptCategoriesTags` and `MaskReceiptsForMemberVisibility`, as
+  `GET /receipt` does. So a hidden receipt is absent from every file, a category outside the
+  viewer's grants is stripped (and so cannot make a receipt multi-category), and an isolated peer's
+  comments and authorship are dropped. Both filters were mutation-checked against
+  `TestClaimPacket_GrantFilteringAndMemberMaskingApply`.
+- **The CSVs** are `ReceiptCsvService.BuildReceiptCsv` with `ImageNames` set, which appends an
+  **Images** column (names joined with `,`). The normal export leaves `ImageNames` nil, so its columns
+  are unchanged: listing filenames there would name files its zip does not contain.
+
+**Memory, on a 1 GB host:**
+
+- The zip is written to a flat file in `temp/` and streamed with `io.Copy` only once complete, so
+  every failure is still a clean JSON error, and a killed process leaves a file the hourly sweeper
+  reclaims. Nothing about the zip is held in memory.
+- Originals are read one at a time through `utils.ReadDataFile`, written to the zip, then
+  downscaled, then dropped; only the downscaled copies accumulate.
+- Downscaling reuses the receipt image view's conversion (`FileRepository.GetBytesFromImageBytes`,
+  the half of `BuildDisplayImageString` before encoding: a PDF rasterizes through `ConvertPdfToJpg`
+  at the `PdfDpi` setting, HEIC transcodes), then `packetDisplaySlices`: ping for the size, decode a
+  JPEG with a `jpeg:size` hint so libjpeg never materializes the full frame, auto-orient, sRGB,
+  flatten alpha onto white, resize, JPEG quality 80. Longest side 1600 px. **An image much taller
+  than a page** (a stacked multi-page PDF, a long till receipt) keeps a readable width (1230 px) and
+  is cut into page-shaped slices (height 1.3 × width, at most 12), rather than being squeezed onto
+  one page. `packetLayoutFor` is the pure arithmetic.
+- **Bounds, each a 400**: more than `maxClaimPacketReceipts` (500) receipts or
+  `MaxClaimPacketImages` (60) image files, checked before any file is read; and more than
+  `maxClaimPacketEmbeddedBytes` (24 MB) of downscaled JPEG, checked as each slice is produced.
+- **One packet builds at a time** per process (`claimPacketSlot`); a second request waits.
+- Measured on Windows with 60 × 3.7 MB 12 MP photos: about 10 s, Go heap peaking near 220 MB, almost
+  all of it in the last second: the HTML string plus chromedp's JSON encoding of it for
+  `Page.setDocumentContent`, roughly five copies of the base64. The Chromium render itself took about
+  1 s. The HTML builder is pre-sized to avoid doubling copies.
+- **An image file missing on disk** is noted in the PDF and in `missingImages`, and the packet is
+  still produced. An image ImageMagick cannot read is still included as an original, with a note in
+  the PDF instead of the picture. Any other read error fails the packet.
+
+**Known limits.** Nothing is sent until the zip is complete, so `docker/default.conf` gives this one
+path (`location ~ ^/api/claim/[0-9]+/packet$`) a 300 s `proxy_read_timeout` instead of the 60 s
+default the rest of `/api/` has; Caddy in front of it (`deploy/oracle/Caddyfile`) sets no read
+timeout. A claim with many multi-page PDF receipts (each rasterized at the full `PdfDpi`, then thrown
+away at 1230 px) is the slow case. `HtmlToPdfService`'s own 30 s render timeout also applies.
+
+**Tests.** `handlers/claim_packet_test.go` replaces Chromium with a renderer returning the HTML
+(`services.SetClaimPacketPdfRendererForTests`), so "packet.pdf" can be asserted on as text: the zip
+layout, headers and filename, originals byte-identical to disk, every manifest hash against the zip's
+bytes, the CSV Images column, the exact subtotals including a multi-category receipt, a paid-by-hidden
+receipt absent from every file, grant stripping and isolation masking, the permission matrix (read,
+no read, another group, missing: identical 403s with no download headers), the image bound as a 400,
+and a missing file. `TestClaimPacket_RealPdf` runs real Chromium once and reads the text back with
+Ghostscript. `services/claim_packet_test.go` covers the category fold, image and download naming,
+`packetLayoutFor`, `packetDisplaySlices` on real ImageMagick (slice counts and sizes, transparency
+flattened to white, garbage rejected), the bounds, and that the normal CSV has no Images column. Image
+fixtures written by `CreateReceiptImage` are read-only on Windows (`utils.WriteFile` passes mode
+`777` decimal), so `removeStoredImages` chmods before removing.

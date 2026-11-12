@@ -699,6 +699,12 @@ gated by `appPermissionGuard` requiring `app.roles.read` (see **Permission-based
     branches, like the 403 one. Pinned by three cases in `http-interceptor.spec.ts`
     (5xx-with-`errorMsg`, 5xx-without, and 5xx-in-queue-mode) and by
     `e2e/auth.spec.ts` → "a wrong password reports it and leaves the form filled in".
+  - **`SUPPRESS_ERROR_TOAST`** (an `HttpContextToken` exported from the interceptor) opts one
+    request out of every toast here; the error still propagates. It exists for `responseType:
+    "blob"` downloads, whose `{ errorMsg }` arrives as a Blob the interceptor cannot read
+    synchronously: a 400 would toast nothing and a 5xx the generic message, replaced a moment later
+    by the caller's real one. The claim packet is the one user (see "Claims"). Other blob downloads
+    (exports, report generation) do not set it, so their 400s are still silent.
   - **Category/tag catalogs:** AppData also carries `groupCategories` / `groupTags` (keyed by group
     id, filtered to the user's grants), stored via `SetGroupCatalog` and read with the
     `AuthState.groupCategories(groupId)` / `groupTags(groupId)` selectors. The **receipt form** and
@@ -1625,6 +1631,31 @@ End-to-end tests live in `e2e/` and use **Playwright**. They drive the real Angu
    (`switch-to-mariadb.sh` / `switch-to-postgresql.sh` work the same — all three export the same `E2E_*` defaults.)
 4. Start the Go API separately (`cd ../api && go run main.go`). Playwright auto-starts the Angular dev server via its `webServer` config, but it cannot launch the API.
 5. Run the tests: `npm run e2e` (or `npm run e2e:ui` for watch-style debugging).
+
+**On the owner's Windows machine** (no Docker, WSL or system Redis) there is a portable toolchain in
+`C:\Users\ianys\.rw-toolchain`, set up once and outside the repo. From Git Bash:
+
+```bash
+source /c/Users/ianys/.rw-toolchain/env.sh       # Go+CGO, ImageMagick 7, Redis
+bash $RW_TC/stack.sh start                       # Redis :6379, API :8081 (SQLite), ng serve :4200
+cd desktop && E2E_USER_USERNAME=e2e-user E2E_USER_PASSWORD=e2e-user-password \
+  E2E_ADMIN_USERNAME=e2e-admin E2E_ADMIN_PASSWORD=e2e-admin-password \
+  E2E_BASE_URL=http://localhost:4200 NODE_PATH=$PWD/node_modules \
+  npx playwright test -c $RW_TC/playwright.chrome.config.ts e2e/claims.spec.ts
+bash $RW_TC/stack.sh stop                        # stops whatever listens on 4200, 8081, 6379
+```
+
+- Redis is 7.4 built from source with the toolchain's MSYS2 gcc (`$RW_TC/redis`, carrying its own
+  `msys-2.0.dll`); no official portable Windows build exists.
+- The API's database, `data/`, `logs/` and `temp/` live in `$RW_TC/stack/run` (`BASE_PATH` points
+  there), so nothing lands in the repo. The two e2e accounts from step 2 already exist in that DB.
+- **Use `localhost`, not `127.0.0.1`, for `E2E_BASE_URL`.** The API runs as `-env dev`, which forces
+  `Secure` cookies, and Playwright's `APIRequestContext` (`withAdminApi` and friends) sends a
+  `Secure` cookie over plain http to `localhost` only. Against `127.0.0.1` every provisioning call
+  403s with "Unauthorized" while the browser logins still work.
+- **The suite runs on the system Chrome**, through `$RW_TC/playwright.chrome.config.ts`: it reuses
+  `playwright.config.ts` and only sets `channel: 'chrome'` (plus `NODE_PATH`, since it lives outside
+  the repo). `npm run e2e:install` downloads Chromium 1217, but its extraction stalls on this machine.
 
 ### CI
 
@@ -3018,6 +3049,167 @@ renders the **full dataset** (not the capped builder preview) and re-resolves ac
   `app.reports.read`/`readAll` (`availableWidgetTypeOptions`), and its config is a single template picker
   (`app-select`) whose options come from `ReportService.getReportTemplates` — server-filtered to the
   caller's viewable templates (`reportTemplateOptions`, loaded in `ngOnInit`, `catchError`→empty).
+
+## Claims (reimbursement claims, fork feature)
+
+A claim is the user's own record of a submission to the department paying them back: which receipts
+went in, when it was submitted, what was claimed, what was paid and when, and anything later taken
+back. Everything lives in `src/claims/`, under `/claims`, lazy-loaded as `ReimbursementClaimsModule`.
+The API is `ReimbursementClaimService` (`api/swagger.yml`, tag `ReimbursementClaim`).
+
+- **Naming trap.** `src/services/claims.service.ts` (`ClaimsService`) and the generated `Claims`
+  model are about **JWT** claims. The feature's model is `Claim` (singular) and its service is
+  `ReimbursementClaimService`. The module is `ReimbursementClaimsModule`, not `ClaimsModule`, so
+  nothing reads as "the module that provides `ClaimsService`". New files take a `claim-` prefix.
+- **Pages.** `claim-list` at `/claims/group/:groupId` (`GroupGuard`, like the receipt list), and
+  `claim-form` at `/claims/add`, `/claims/:id/view` and `/claims/:id/edit`. The header's
+  `request_quote` button (`data-testid="header-claims-link"`) sits after Receipt List. It is built in
+  `HeaderComponent.claimsHeaderLink`, not as a `GroupState` selector, to keep the fork's edits to
+  upstream files small.
+- **The server computes every figure.** That covers `receiptsTotal`, `effectiveClaimedAmount`,
+  `paidAmount` (payments minus recoupments, can be negative), `outstandingAmount` (can be negative),
+  `daysWaiting` and the list `summary`. The client only formats them, with `customCurrency` and
+  `appDate`. Never add anything up here.
+- **Status and ledger type are plain strings.** `claim.utils.ts` labels and colours the known codes
+  (`CLAIM_STATUS_OPTIONS`, `CLAIM_LEDGER_TYPE_OPTIONS`). An unknown one renders as its **raw code**,
+  and `claimStatusOptionsFor` / `claimLedgerTypeOptionsFor` add it to the select so an edit form can
+  still show it. The status chip is the shared `app-status-chip` through
+  `customStatus` / `customStatusColor`, so no new colours were authored.
+- **Calendar days, not instants.** `submittedDate`, `dueDate`, entry `date` and `summary.asOfDate`
+  are bare `yyyy-MM-dd` both ways.
+  - Display: `appDate:"mediumDate":"calendar"`.
+  - Load into a datepicker: `calendarDayToLocalDate`.
+  - Send: `optionalCalendarDay` (`toCalendarDay`), with no zone conversion anywhere.
+  - A new ledger entry defaults to `todayInZone(appZone)`. `createdAt` / `updatedAt` are instants,
+    shown by the shared `app-audit-detail-section`.
+- **Gating.** Reading is `group.receipts.read` and every write is `group.receipts.update`. There
+  are no claim permissions. Both are judged in the claim's **own** group (`canUpdateClaims`), never
+  the group being browsed, which may be the All group.
+  - **The detail routes are gated in `claimResolverFn`**, since the claim's group is unknown until
+    it loads. A missing claim and a forbidden one are the same 403. The resolver toasts
+    `CLAIM_NOT_FOUND_MESSAGE` and redirects to the browsed group's list. The interceptor stays quiet
+    on a GET, so without the toast the page would simply never open.
+  - An edit the viewer may not make is redirected to `/claims/:id/view`.
+  - `/claims/add` uses `groupPermissionGuard` with `useAddTargetGroupId`.
+- **The All group.** The list spans every readable group there and adds a **Group** column.
+  - **"Add Claim" needs a real group.** It shows only when `GroupState.addTargetGroupId` resolves
+    (the browsed group, or the sole real group, exactly as the receipt form seeds) and that group
+    grants update. A multi-group user on All is told to open a group instead.
+  - `claim-form` in add mode with no add target is reachable only by URL. It toasts and leaves.
+- **Receipts on a claim.** A claim carries ids only.
+  - `claim-form` loads the claim group's receipts **once**, unpaged (`getReceiptsForGroup`,
+    `pageSize: -1`), and that one request feeds both the rows and the picker's candidates.
+  - The `rxResource` is keyed on a primitive `claimGroupId` computed. Keying it on `claim()` would
+    reload every receipt in the group after each ledger change, because each change refetches the
+    claim.
+  - An id the list did not return renders as `Receipt #<id>`.
+- **Writes return only what they wrote**, so the page refetches the claim (`refresh()`) after any
+  receipt or ledger change. The refetch never rebuilds the form, so an edit in progress on the
+  claim's own fields survives a ledger change. A failed refetch (the claim was deleted elsewhere)
+  toasts and returns to the list.
+- **Adding and removing receipts is partial success.** `reportClaimReceiptsResult` is the one
+  reporter: a snackbar when everything went through, otherwise `ClaimReceiptsResultDialogComponent`
+  naming each refusal. It is a mirror of the bulk-delete result dialog, whose wording is about
+  deleting. A receipt already in another claim is refused by the server, never moved.
+  - Removing needs no confirmation, since re-adding is one click.
+  - Deleting a ledger entry or the claim goes through `ConfirmationDialogComponent`.
+- **A receipt carries its claim.** The server sets `Receipt.claimId` / `claimName` on every read
+  path, but only for a claim the viewer may see. **Absent never proves "unclaimed"**: treat it as
+  "nothing to show", and leave the hidden case to the server's refusal. The helpers are in
+  `claim.utils.ts` (`isInOtherClaim`, `claimedReceiptsByClaim`, `claimGroupMoveWarning`), and
+  `ReceiptClaimLinkComponent` (`src/claims/receipt-claim-link/`, standalone) renders the name as a
+  link to `/claims/:id/view`, or nothing. Four places use them:
+  - **The picker hides** a receipt in another claim rather than showing it disabled: the shared chip
+    autocomplete has no disabled option, and the server would refuse it anyway. A line under the
+    field counts what was left out (`claim-receipt-picker-other-claims`). The group list is loaded
+    once, so a `claimId` there can be stale. That is harmless both ways: a receipt added since is
+    excluded by `receiptIds`, and one removed since still names this claim, which is not "another".
+  - **The bulk dialog names them up front**, by claim (`add-to-claim-already-claimed`), and leaves
+    out those already in the chosen claim, which the server counts as added. They are still
+    **sent**. The refusal and the result dialog stay the record, and cover the hidden case.
+  - **The receipt form warns on a group move.** Picking another group on a receipt with a
+    `claimName` shows "Moving this receipt to another group will remove it from claim 'â€¦'"
+    (`receipt-claim-move-warning`) under the group field. It uses the form's `rw-requirement-hint`
+    style and blocks nothing. It is driven by `claimMoveWarning()` off the private
+    `currentGroupId` signal, and is quiet in view mode and while the group is blank.
+  - **"In claim: <name>"** sits in the receipt form's audit details (`receipt-claim`), view and edit.
+    `app-audit-detail-section` gained an `<ng-content>` for it; nothing else projects into it.
+  - **The receipts table has an opt-in Claim column** (`claim`), the same way as Comment: in
+    `DEFAULT_RECEIPT_TABLE_COLUMNS` with `visible: false`, so `mergeCustomFieldColumns` appends it
+    unchecked to a saved layout. It is **not sortable**, because the API has no claim order.
+- **Two ways to add receipts.**
+  - On the claim page, the `+` opens `ClaimReceiptPickerDialogComponent`: the shared multi-select
+    `app-autocomlete` over the group's other receipts, filtered by name, without those in another
+    claim (above).
+  - On the receipts table, **Add Selected Receipts to a Claim** (`data-testid="receipts-add-to-claim"`)
+    sits in the overflow menu's selection section. It is a plain `mat-menu-item`, per "The overflow
+    menu".
+  - `canAddToClaim` mirrors `canBulkDelete`: any selected row's own group grants
+    `group.receipts.update`.
+  - It opens `AddToClaimDialogComponent`, which picks one of the group's claims or creates one. A new
+    claim is created first, then the receipts are added. A retry after a failed add reuses the claim
+    it already created.
+  - The claim select starts **blank** on purpose, because adding to the wrong claim is the mistake to
+    prevent.
+  - **A selection that spans groups is refused up front**, naming the groups, because a claim holds
+    one group's receipts. The alternative was guessing a group and letting the server refuse the
+    rest.
+- **The dialogs are standalone** (`imports: [SharedUiModule, …]`). The receipts table opens one, and
+  importing `ReimbursementClaimsModule` into `ReceiptsModule` would also register the claim routes
+  under `/receipts`.
+- **The ledger.** PAYMENT, RECOUPMENT and NOTE. A recoupment has its own icon (`undo`), a `−` sign and
+  the warn colour. A payment has `payments`, a `+` sign and green. A note's optional amount is shown
+  muted as "(not counted)". In `ClaimLedgerEntryDialogComponent` the amount is required for a payment
+  or recoupment, and the note text is required for a note. The validators swap as the type changes.
+- **Server 400s come in two shapes.** `{ errorMsg }` is toasted by the interceptor. A map keyed by
+  field goes onto the matching controls through the existing `applyApiErrors`
+  (`applyClaimApiErrors`). A key no control shows, such as `receiptIds`, is toasted
+  (`unmatchedApiErrorMessage`), so a 400 is never silent.
+- **Optional fields are omitted when blank.** `buildUpsertClaimCommand` drops an emptied field,
+  because PUT is a full replace and absent means cleared. The server reads a blank amount as no
+  amount.
+- **A receipt in a claim cannot be deleted.** Single delete gets a 400 whose `errorMsg` names the
+  claim, which the interceptor toasts while the row stays. Bulk delete lists it as an ordinary
+  failure. Neither delete flow needed a change.
+- **Downloads.** The claim page's header `download` button (`claim-download`) opens a menu, view and
+  edit alike, with two entries that each say what they hold:
+  - **Claim packet** (`claim-download-packet`): `GET /claim/{id}/packet` through
+    `ClaimPacketDownloadService` (`claim-packet-download.service.ts`). The zip holds `packet.pdf`,
+    the original images, `receipts.csv` / `items.csv` and a SHA-256 `manifest.json` (see
+    `api/CLAUDE.md` → "Claim packet"). Offered on any claim, even one with no receipts.
+    - **The file name is the server's**, read from `Content-Disposition` (`observe: 'response'`).
+      `claimPacketFilename` mirrors the server's rule, dated today in the app zone, as the fallback.
+    - **Busy state.** Nothing arrives until the zip is complete, which can take ~10 s. While
+      `packetBusy()` the trigger and the menu entry are disabled and a spinner
+      (`claim-packet-busy`) shows. Success is a snackbar naming the file. Leaving the page does not
+      cancel it.
+    - **Errors are reported once, by the page.** The request sets `SUPPRESS_ERROR_TOAST`, and
+      `claimPacketErrorMessage` reads the server's `errorMsg` out of the Blob body, such as the
+      400 for more than 60 images. A 403 reads as `CLAIM_NOT_FOUND_MESSAGE`. A body that is not
+      JSON falls back by status: 504 gets a "took too long" message, since nginx gives up after
+      60 s. It uses `FileReader`, not `Blob.text()`, which jsdom lacks.
+  - **Receipts CSV** (`claim-export`): `ReceiptExportService.exportReceiptsById` over the claim's
+    receipt ids. Shown only when the claim has receipts.
+  - **No row action on the claim list.** The table has no actions column, and it already has ten
+    columns.
+- **Validator swaps must emit.** `app-input` / `app-textarea` build their messages from the
+  control's `statusChanges` (`BaseInputComponent.formControlErrors`), so a validator change made with
+  `updateValueAndValidity({ emitEvent: false })` leaves the field red with **no message**. The ledger
+  dialog did exactly that when the type switched to Note, so saving a note with no text showed an
+  unexplained red field. It now lets both updates emit, pinned by the dialog spec.
+- **E2E:** `e2e/claims.spec.ts` (serial, admin storageState, two groups it provisions and deletes;
+  no global setting touched). It walks the main journey over the real wire: a claim created on the
+  form and filled from the receipts table's bulk action, a receipt already in another claim named by
+  the bulk dialog before submitting and then refused and named, the claim page's picker leaving out
+  a receipt in another claim, a payment and a recoupment moving the server's figures (asserted
+  separator-tolerantly, amounts typed as whole numbers so any currency format works), the single
+  and bulk delete refusals naming the claim, and a receipt moved to another group on the receipt
+  form: its "In claim" link, the warning on picking the group, and leaving the claim on save. The Jest specs mock `ReimbursementClaimService`, so this is the only proof the halves agree.
+  It also downloads the claim packet over the real wire (`beforeAll` uploads `fixtures/receipt.png`
+  to one receipt) and opens the zip with `e2e/helpers/zip.ts`, a small central-directory reader
+  (the project has no zip dependency). It checks the file name pattern, that `packet.pdf`,
+  `receipts.csv`, `items.csv` and `manifest.json` are present, that every manifest hash matches the
+  bytes in the zip, and that the image is the uploaded original, byte for byte.
 
 ## Testing Requirements
 
