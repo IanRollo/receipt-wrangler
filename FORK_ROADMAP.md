@@ -101,6 +101,47 @@ Likely phases:
 
 Pairs naturally with multicurrency (item 4): "currency unclear" is the first flag to build.
 
+## 6. Processing queue for quick scans and email uploads
+
+A quick-added receipt disappears until it is finished: there is nowhere to see that it is waiting,
+being read, retrying after an error, or stuck. Wanted: a page listing every upload still in flight
+or failed, with its state, its image, the error if any, and a resubmit button.
+
+What already exists:
+
+- **Nothing is recorded while a scan runs.** `wranglerasynq/quick_scan_handler.go` calls
+  `ReceiptService.QuickScan`, and the `system_tasks` rows (QUICK_SCAN, OCR_PROCESSING,
+  CHAT_COMPLETION) are written as each step **finishes**. `SystemTaskStatus` is only `SUCCEEDED` /
+  `FAILED`, so "queued" and "in progress" have no row to show.
+- **The in-flight state lives in Redis.** Asynq already knows every task's state (pending, active,
+  retry with its next attempt time and last error, archived), and the code already uses
+  `asynq.Inspector` (`wranglerasynq/inspector.go`, `source_file.go`).
+- **Failures are already recoverable.** "Failed Uploads Keep Their Image" (root `CLAUDE.md`): a failed
+  activity keeps its source file, offers preview/download, and an archived task can be rerun
+  (`canBeRestarted`). Today that is reached through the group activity feed and System Tasks, mixed
+  in with everything else.
+
+Likely shape:
+
+- **Read the queue from asynq, not from new DB rows.** A new endpoint lists the quick-scan and email
+  tasks in the pending, active, retry and archived sets, decodes each payload for its group,
+  uploader and original file name, and filters to what the caller may see (the task's group, as the
+  activity feed already judges it). Each row: state, uploaded at, file name, attempt count, next
+  retry, last error, and links to preview the image and to rerun.
+- **Do not add `QUEUED` / `IN_PROGRESS` to `SystemTaskStatus`.** It is a closed enum on the wire;
+  a new value is the released-Android-build outage described in `CLAUDE.md`. The queue's own state
+  should be a **plain string** on a new schema instead.
+- **Resubmit reuses the existing rerun**, which already enforces `Archived` and needs the source
+  file. A task still in the retry set could get a "retry now" (`Inspector.RunTask`) as well.
+- **Desktop:** a "Processing" page (or a panel on the dashboard) that polls every few seconds while
+  anything is in flight, plus a count badge in the header. Mobile could follow, since the person
+  quick-adding is often on the phone.
+- **Limit to note:** succeeded quick-scan tasks leave Redis immediately (no `asynq.Retention` on
+  that queue), so the queue shows only unfinished and failed work. Finished receipts are already in
+  the receipts list; this page is for what is not.
+
+Rough size: backend endpoint and desktop page in 2-3 days; mobile extra.
+
 ## Considered and deferred: Google Drive mirror
 
 Nightly copy into `Receipts/<yyyy-mm>/` with a monthly spreadsheet linking to each image.
