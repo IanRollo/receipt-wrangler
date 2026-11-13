@@ -1,10 +1,12 @@
-import { Component, computed, effect, signal, untracked } from "@angular/core";
+import { Component, computed, effect, inject, signal, untracked } from "@angular/core";
 import { Router } from "@angular/router";
 import { Store } from "@ngxs/store";
 import { take, tap } from "rxjs";
 import { LayoutState } from "src/store/layout.state";
 import { ToggleIsSidebarOpen } from "src/store/layout.state.actions";
 import { AuthService, NotificationsService, Permission } from "../../open-api";
+import { canReadProcessingQueue } from "../../processing-queue/processing-queue.utils";
+import { ProcessingQueueCountService } from "../../processing-queue/processing-queue-count.service";
 import { AuthState, GroupState } from "../../store";
 
 @Component({
@@ -40,6 +42,22 @@ export class HeaderComponent {
   // selector beside receiptListLink, to keep the fork's footprint in shared
   // upstream files to this one line of logic.
   public claimsHeaderLink = computed(() => ["/claims/group", this.selectedGroupId()]);
+
+  // Processing queue (fork feature). The count service owns the badge and its
+  // refresh rules; the link shows only where the viewer may read the queue.
+  private readonly processingQueueCount = inject(ProcessingQueueCountService);
+
+  public processingHeaderLink = computed(() => ["/processing/group", this.selectedGroupId()]);
+
+  public canViewProcessing = computed(() =>
+    canReadProcessingQueue(this.groups(), this.groupPermissions(), this.selectedGroupIdNumber())
+  );
+
+  public processingCount = this.processingQueueCount.count;
+
+  private readonly groups = this.store.selectSignal(GroupState.groups);
+
+  private readonly groupPermissions = this.store.selectSignal(AuthState.groupPermissions);
 
   public settingsBaseHeaderLink = computed(() => {
     this.selectedGroupId();

@@ -76,6 +76,13 @@ const routes: Routes = [
         canActivate: [AuthGuard],
       },
       {
+        // Processing queue (fork feature).
+        path: "processing",
+        loadChildren: () =>
+          import("../processing-queue/processing-queue.module").then((m) => m.ProcessingQueueModule),
+        canActivate: [AuthGuard],
+      },
+      {
         path: "settings",
         loadChildren: () =>
           import("../settings/settings.module").then((m) => m.SettingsModule),

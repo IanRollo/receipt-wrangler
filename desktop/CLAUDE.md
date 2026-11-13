@@ -3211,6 +3211,51 @@ The API is `ReimbursementClaimService` (`api/swagger.yml`, tag `ReimbursementCla
   `receipts.csv`, `items.csv` and `manifest.json` are present, that every manifest hash matches the
   bytes in the zip, and that the image is the uploaded original, byte for byte.
 
+## Processing queue (fork feature)
+
+Where a quick scan or email upload is visible while it is **queued, running, retrying or failed**
+(a finished one is a receipt and is not listed). Everything lives in `src/processing-queue/`, under
+`/processing`, lazy-loaded as `ProcessingQueueModule`. The API is the generated `ProcessingQueueService`
+(see root `CLAUDE.md` → "Processing Queue" and `api/CLAUDE.md`).
+
+- **Page.** `processing-queue-list` at `/processing/group/:groupId`, guarded by `GroupGuard` then
+  `processingQueueGuard` (`group.activities.read`; on the All group, in *any* real group, since the
+  All group grants nothing itself — `canReadProcessingQueue`). Under All it adds a Group column.
+  Rows come back newest first and are shown as returned.
+- **State and type are plain strings.** `processing-queue.utils.ts` labels and colours the four known
+  states through the shared `app-status-chip` (queued and processing gray, retrying yellow, failed red;
+  processing also shows a spinner). An unknown state counts as **in flight** and renders as its raw
+  code; an unknown type likewise. Nothing may throw on a new code.
+- **Actions are keyed by `queue` + `asynqTaskId`, never `systemTaskId`** (often absent). Preview reuses
+  `SourceFileViewerDialogComponent`; download reads `Content-Disposition` through `downloadFile` like
+  the activity feed. The row offers what the server flagged: preview/download on `hasSourceFile`,
+  retry on `canRetryNow || canBeRestarted` (both already false without `group.activities.rerun`).
+- **Retry wording.** "Retry now" for RETRYING (moves the attempt asynq would make anyway to now; no
+  confirmation), "Resubmit" for FAILED. Only FAILED asks first, because a rerun after the retries ran
+  out can duplicate a receipt that was in fact created. The list reloads after every retry, including
+  a refused one (the task may have moved on).
+- **Polling.** The page reloads every 5 s (`PROCESSING_POLL_INTERVAL_MS`) while any item is not
+  FAILED and the tab is visible, using a self-rescheduling `setTimeout` after each response (never
+  overlapping requests). It stops on a hidden tab (and reloads on `visibilitychange` back), on
+  destroy, on a failed load, and when only FAILED items remain. The Refresh button is always there.
+- **The header badge does not poll.** `ProcessingQueueCountService` (root) holds the count, which is
+  the list's length (every listed item is in flight or failed). It is fetched when the selected
+  group or permission changes, on `NavigationEnd` (throttled to once per 15 s, and skipped on the
+  Processing page), after a Quick Scan submit (`QuickScanDialogComponent` calls `refresh()`), and the
+  page pushes its own result with `report()`. So it can be stale between navigations: a scan that
+  finishes while the user sits on another page clears the badge on their next navigation. A failed
+  fetch is silent and keeps the old number.
+- **Header link.** `HeaderComponent` shows a `pending_actions` button
+  (`data-testid="header-processing-link"`) after Claims, only where `canReadProcessingQueue` holds for
+  the selected group. The badge is `matBadge` (`MatBadgeModule` was added to `LayoutModule`).
+- **No "View queue" link in the Quick Scan toast.** `SnackbarService` has a fixed action and no
+  template-free way to add a second; it was not a small change.
+- **E2E:** `e2e/processing-queue.spec.ts` (serial, admin storageState). Like
+  `failed-activity-source-file.spec.ts` it points the **global** AI provider at an unreachable host,
+  restores it, and relies on the `e2e-shared-backend` concurrency group. It does not wait for FAILED
+  (asynq backoff makes that minutes long): it asserts the item appears as RETRYING with its error,
+  preview opens, the header badge reads 1, and **Retry now** produces another attempt over the wire.
+
 ## Testing Requirements
 
 **All new code must have accompanying unit tests.**

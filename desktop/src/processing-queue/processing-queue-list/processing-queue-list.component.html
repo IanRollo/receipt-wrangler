@@ -1,0 +1,122 @@
+<app-table-header [headerText]="headerText()" [subtitle]="subtitle()">
+  <app-button
+    data-testid="processing-queue-refresh"
+    matButtonType="basic"
+    buttonText="Refresh"
+    icon="refresh"
+    tooltip="Refresh"
+    (clicked)="refresh()"
+  ></app-button>
+</app-table-header>
+
+@if (polling()) {
+  <p class="processing-queue-note" data-testid="processing-queue-live">
+    <mat-icon class="processing-queue-note__icon">sync</mat-icon>
+    Updating automatically while uploads are in progress.
+  </p>
+}
+
+@if (truncated()) {
+  <p class="processing-queue-note" data-testid="processing-queue-truncated">
+    Only the first part of the queue is shown. Resolve some of these to see the rest.
+  </p>
+}
+
+@if (loadFailed()) {
+  <p class="processing-queue-note processing-queue-note--error" data-testid="processing-queue-error">
+    The queue could not be loaded. Use Refresh to try again.
+  </p>
+}
+
+@if (loaded() && !loadFailed() && items().length === 0) {
+  <p class="processing-queue-message" data-testid="processing-queue-empty">{{ emptyMessage }}</p>
+} @else if (loaded() || items().length > 0) {
+  <div class="table-container">
+    <app-table
+      [columns]="columns()"
+      [displayedColumns]="displayedColumns()"
+      [dataSource]="dataSource()"
+    ></app-table>
+  </div>
+}
+
+<ng-template #stateCell let-item="element">
+  <span class="processing-queue-state" data-testid="processing-queue-state">
+    <app-status-chip [customStatus]="stateLabel(item.state)" [customStatusColor]="stateTone(item.state)"></app-status-chip>
+    @if (showSpinner(item)) {
+      <mat-spinner diameter="16" data-testid="processing-queue-spinner"></mat-spinner>
+    }
+  </span>
+</ng-template>
+
+<ng-template #typeCell let-item="element">{{ typeLabel(item.taskType) }}</ng-template>
+
+<ng-template #nameCell let-item="element">
+  <span data-testid="processing-queue-name">{{ displayName(item) }}</span>
+</ng-template>
+
+<ng-template #groupCell let-item="element">
+  {{ (item.groupId.toString() | group)?.name }}
+</ng-template>
+
+<ng-template #uploaderCell let-item="element">
+  @if (item.uploaderUserId) {
+    {{ (item.uploaderUserId.toString() | user)?.displayName }}
+  } @else {
+    {{ item.emailSender }}
+  }
+</ng-template>
+
+<ng-template #uploadedAtCell let-item="element">
+  {{ item.uploadedAt | appDate : "MMM d, h:mm a" }}
+</ng-template>
+
+<ng-template #attemptsCell let-item="element">
+  <span data-testid="processing-queue-attempts">{{ item.retryCount }}/{{ item.maxRetries }}</span>
+</ng-template>
+
+<ng-template #nextRetryCell let-item="element">
+  {{ item.nextRetryAt | appDate : "mediumTime" }}
+</ng-template>
+
+<ng-template #errorCell let-item="element">
+  @if (item.lastError) {
+    <span class="processing-queue-error" data-testid="processing-queue-last-error" [matTooltip]="item.lastError">
+      {{ item.lastError }}
+    </span>
+  }
+</ng-template>
+
+<ng-template #actionsCell let-item="element">
+  <div class="d-flex align-items-center gap-1">
+    @if (item.hasSourceFile) {
+      <app-button
+        icon="visibility"
+        matButtonType="iconButton"
+        tooltip="Preview source file"
+        ariaLabel="Preview source file"
+        data-testid="processing-queue-preview"
+        (clicked)="onPreview(item)"
+      ></app-button>
+      <app-button
+        icon="download"
+        matButtonType="iconButton"
+        tooltip="Download source file"
+        ariaLabel="Download source file"
+        data-testid="processing-queue-download"
+        (clicked)="onDownload(item)"
+      ></app-button>
+    }
+    @if (retryText(item); as label) {
+      <app-button
+        icon="replay"
+        matButtonType="basic"
+        data-testid="processing-queue-retry"
+        buttonClass="processing-queue-retry-button"
+        [buttonText]="label"
+        [disabled]="isRetrying(item)"
+        (clicked)="onRetry(item)"
+      ></app-button>
+    }
+  </div>
+</ng-template>

@@ -13,6 +13,7 @@ import { codePointMaxLengthValidator, trimmedRequiredValidator } from "../../val
 import { UploadImageComponent } from "../upload-image/upload-image.component";
 import { QuickScanFieldConfig, resolveQuickScanFieldConfig } from "./quick-scan-field-config";
 import { receiptRequirementsFor } from "../../utils/receipt-requirements";
+import { ProcessingQueueCountService } from "../../processing-queue/processing-queue-count.service";
 
 // Mirrors the backend's models.MaxCommentLength (the Comment column is varchar(500), which
 // MySQL/Postgres measure in characters) and mobile's FormBuilderTextField maxLength, so an
@@ -55,6 +56,8 @@ export class QuickScanDialogComponent implements OnInit {
   private readonly commentPermissionByGroup = new Map<number, boolean>();
 
   private readonly destroyRef = inject(DestroyRef);
+  // Processing queue (fork feature): the header badge learns of the new upload now.
+  private readonly processingQueueCount = inject(ProcessingQueueCountService);
 
   constructor(
     private dialogRef: MatDialogRef<QuickScanDialogComponent>,
@@ -298,6 +301,7 @@ export class QuickScanDialogComponent implements OnInit {
           tap(() => {
             const imageWord = this.images.length === 1 ? "image" : "images";
             this.snackbarService.success(`Successfully queued ${imageWord} for processing`);
+            this.processingQueueCount.refresh();
             this.dialogRef.close();
           }),
         )
