@@ -7,6 +7,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { ClaimCurrencyTotal } from './claimCurrencyTotal';
 
 
 /**
@@ -33,5 +34,9 @@ export interface ClaimListSummary {
      * The largest daysWaiting in the list; absent when no claim has one
      */
     oldestDaysWaiting?: number;
+    /**
+     * outstandingTotal per claim currency, by code, over the claims with awaitingSettlement true. Claims of one group share its base currency, so only the All group can show several. outstandingTotal is the total of the one currency present, else of the install default currency. Always present; empty when nothing is awaiting.
+     */
+    outstandingTotals?: Array<ClaimCurrencyTotal>;
 }
 

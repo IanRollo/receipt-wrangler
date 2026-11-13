@@ -33,6 +33,16 @@ type packetDocument struct {
 	MultiCategoryCount int
 	SubtotalsTotal     string
 	Receipts           []packetReceiptSection
+
+	// Multicurrency (fork feature). BaseCurrency is the claim's currency; HasForeign says some
+	// receipt is in another one, which adds the "counted in" column to the receipts table.
+	// ReceiptCount, GrandTotal and the subtotals cover only the counted receipts. The
+	// Unconverted fields feed the cover sheet's warning and the "Not converted" block.
+	BaseCurrency      string
+	HasForeign        bool
+	UnconvertedCount  int
+	UnconvertedTotals []packetField
+	NotConverted      []packetNotConvertedGroup
 }
 
 type packetField struct {
@@ -61,6 +71,7 @@ type packetReceiptRow struct {
 	Categories    string
 	Tags          string
 	Amount        string
+	CountedAmount string
 	Status        string
 	Images        []string
 	MultiCategory bool
@@ -110,11 +121,12 @@ func (builder *claimPacketBuilder) document(sections []packetReceiptSection) pac
 		Notes:        claim.Notes,
 		GeneratedAt:  builder.now.Format(packetInstantFormat),
 		GeneratedBy:  builder.username,
-		ReceiptCount: len(builder.receipts),
 		Receipts:     sections,
+		BaseCurrency: claim.Currency,
 	}
 
 	document.Details = nonEmptyFields(
+		packetField{"Claim currency", claim.Currency},
 		packetField{"Reference number", claim.ReferenceNumber},
 		packetField{"Type", claim.Type},
 		packetField{"Status", humanizeCode(claim.Status)},
@@ -149,21 +161,35 @@ func (builder *claimPacketBuilder) document(sections []packetReceiptSection) pac
 		})
 	}
 
-	folds, total, multiCategory := foldPacketCategories(builder.receipts)
+	folds, total, multiCategory := foldPacketCategoriesBy(builder.receipts, builder.countedAmount)
 	subtotalsTotal := decimal.Zero
 	for _, fold := range folds {
-		group := packetCategoryGroup{Name: fold.Name, Subtotal: builder.money(fold.Subtotal)}
+		group := packetCategoryGroup{Name: fold.Name, Subtotal: builder.moneyIn(fold.Subtotal, claim.Currency)}
 		for _, index := range fold.ReceiptIndexes {
 			row := sections[index].Row
 			row.MultiCategory = len(builder.receipts[index].Categories) > 1
+			row.CountedAmount = builder.countedAmountString(builder.receipts[index])
 			group.Rows = append(group.Rows, row)
 		}
 		subtotalsTotal = subtotalsTotal.Add(fold.Subtotal)
 		document.Categories = append(document.Categories, group)
 	}
-	document.GrandTotal = builder.money(total)
+	document.GrandTotal = builder.moneyIn(total, claim.Currency)
 	document.MultiCategoryCount = multiCategory
-	document.SubtotalsTotal = builder.money(subtotalsTotal)
+	document.SubtotalsTotal = builder.moneyIn(subtotalsTotal, claim.Currency)
+
+	document.NotConverted = builder.notConverted(sections)
+	for _, receipt := range builder.receipts {
+		if builder.packetCurrencyOf(receipt) != claim.Currency {
+			document.HasForeign = true
+		}
+	}
+	document.ReceiptCount = len(builder.receipts)
+	for _, group := range document.NotConverted {
+		document.ReceiptCount -= len(group.Rows)
+		document.UnconvertedCount += len(group.Rows)
+		document.UnconvertedTotals = append(document.UnconvertedTotals, packetField{group.Currency, group.Total})
+	}
 
 	return document
 }
@@ -177,7 +203,7 @@ func (builder *claimPacketBuilder) moneyString(value string) string {
 	if err != nil {
 		return value
 	}
-	return builder.money(amount)
+	return builder.moneyIn(amount, builder.claim.Currency)
 }
 
 // packetCategoryFold is one category's receipts (indexes into the receipt list,
@@ -195,12 +221,28 @@ type packetCategoryFold struct {
 // which comes last; the rest sort by name. total counts each receipt once.
 // Folded with shopspring/decimal, so every figure is exact. Pure.
 func foldPacketCategories(receipts []models.Receipt) (folds []packetCategoryFold, total decimal.Decimal, multiCategory int) {
+	return foldPacketCategoriesBy(receipts, func(receipt models.Receipt) (decimal.Decimal, bool) {
+		return receipt.Amount, true
+	})
+}
+
+// foldPacketCategoriesBy is foldPacketCategories over the amount each receipt counts for, in
+// the claim's base currency; a receipt amountOf reports as not counted (an unconverted one)
+// is left out of the groups, the subtotals, the total and the multi-category count.
+func foldPacketCategoriesBy(
+	receipts []models.Receipt,
+	amountOf func(models.Receipt) (decimal.Decimal, bool),
+) (folds []packetCategoryFold, total decimal.Decimal, multiCategory int) {
 	byId := make(map[uint]*packetCategoryFold)
 	var uncategorised *packetCategoryFold
 	total = decimal.Zero
 
 	for index, receipt := range receipts {
-		total = total.Add(receipt.Amount)
+		amount, counted := amountOf(receipt)
+		if !counted {
+			continue
+		}
+		total = total.Add(amount)
 
 		seen := make(map[uint]struct{}, len(receipt.Categories))
 		for _, category := range receipt.Categories {
@@ -215,7 +257,7 @@ func foldPacketCategories(receipts []models.Receipt) (folds []packetCategoryFold
 				byId[category.ID] = fold
 			}
 			fold.ReceiptIndexes = append(fold.ReceiptIndexes, index)
-			fold.Subtotal = fold.Subtotal.Add(receipt.Amount)
+			fold.Subtotal = fold.Subtotal.Add(amount)
 		}
 
 		if len(seen) > 1 {
@@ -226,7 +268,7 @@ func foldPacketCategories(receipts []models.Receipt) (folds []packetCategoryFold
 				uncategorised = &packetCategoryFold{Name: uncategorisedLabel, Subtotal: decimal.Zero}
 			}
 			uncategorised.ReceiptIndexes = append(uncategorised.ReceiptIndexes, index)
-			uncategorised.Subtotal = uncategorised.Subtotal.Add(receipt.Amount)
+			uncategorised.Subtotal = uncategorised.Subtotal.Add(amount)
 		}
 	}
 
@@ -432,6 +474,8 @@ const claimPacketHtml = `<!doctype html>
   tr.grand-total td { background: #f2f2f2; font-weight: 700; border-top: 2px solid #888; }
   .files { font-family: Consolas, "Courier New", monospace; font-size: 9px; word-break: break-all; }
   .note { color: #555; font-style: italic; }
+  .warning { border: 2px solid #b00020; background: #fdecea; padding: 6px 8px; margin: 10px 0; font-weight: 600; }
+  .warning table { margin-top: 4px; font-weight: 400; }
   .notes { white-space: pre-wrap; border: 1px solid #ccc; padding: 6px; }
   .comment { border-left: 3px solid #ccc; padding: 2px 8px; margin: 4px 0; break-inside: avoid; }
   .comment .meta { color: #555; font-size: 10px; }
@@ -455,7 +499,11 @@ const claimPacketHtml = `<!doctype html>
 <table class="fields">
 {{range .Figures}}<tr><th>{{.Label}}</th><td class="num">{{.Value}}</td></tr>
 {{end}}</table>
-
+{{if .UnconvertedCount}}<div class="warning">Incomplete: {{.UnconvertedCount}} receipt{{if ne .UnconvertedCount 1}}s are{{else}} is{{end}} not converted to {{.BaseCurrency}} and {{if ne .UnconvertedCount 1}}are{{else}}is{{end}} NOT included in the figures above or in the totals below. They are listed under "Not converted".
+<table class="fields">
+{{range .UnconvertedTotals}}<tr><th>{{.Label}}</th><td class="num">{{.Value}}</td></tr>
+{{end}}</table></div>
+{{end}}
 {{if .Notes}}<h2>Notes</h2>
 <div class="notes">{{.Notes}}</div>
 {{end}}
@@ -470,17 +518,26 @@ const claimPacketHtml = `<!doctype html>
 {{end}}
 <h2 class="page">Receipts</h2>
 {{if .Categories}}<table>
-<thead><tr><th>Date</th><th>Name</th><th>Paid by</th><th>Categories</th><th>Tags</th><th class="num">Amount</th><th>Status</th><th>Image files</th></tr></thead>
+<thead><tr><th>Date</th><th>Name</th><th>Paid by</th><th>Categories</th><th>Tags</th><th class="num">Amount</th>{{if $.HasForeign}}<th class="num">Counted in {{$.BaseCurrency}}</th>{{end}}<th>Status</th><th>Image files</th></tr></thead>
 <tbody>
-{{range .Categories}}<tr class="group"><td colspan="8">{{.Name}}</td></tr>
-{{range .Rows}}<tr><td>{{.Date}}</td><td>{{.Name}} (#{{.Id}}){{if .MultiCategory}} *{{end}}</td><td>{{.PaidBy}}</td><td>{{.Categories}}</td><td>{{.Tags}}</td><td class="num">{{.Amount}}</td><td>{{.Status}}</td><td class="files">{{range .Images}}{{.}}<br>{{end}}</td></tr>
-{{end}}<tr class="subtotal"><td colspan="5">Subtotal: {{.Name}}</td><td class="num">{{.Subtotal}}</td><td colspan="2"></td></tr>
-{{end}}<tr class="grand-total"><td colspan="5">Total of {{.ReceiptCount}} receipt{{if ne .ReceiptCount 1}}s{{end}} (each counted once)</td><td class="num">{{.GrandTotal}}</td><td colspan="2"></td></tr>
+{{range .Categories}}<tr class="group"><td colspan="{{if $.HasForeign}}9{{else}}8{{end}}">{{.Name}}</td></tr>
+{{range .Rows}}<tr><td>{{.Date}}</td><td>{{.Name}} (#{{.Id}}){{if .MultiCategory}} *{{end}}</td><td>{{.PaidBy}}</td><td>{{.Categories}}</td><td>{{.Tags}}</td><td class="num">{{.Amount}}</td>{{if $.HasForeign}}<td class="num">{{.CountedAmount}}</td>{{end}}<td>{{.Status}}</td><td class="files">{{range .Images}}{{.}}<br>{{end}}</td></tr>
+{{end}}{{if $.HasForeign}}<tr class="subtotal"><td colspan="6">Subtotal: {{.Name}}</td><td class="num">{{.Subtotal}}</td><td colspan="2"></td></tr>{{else}}<tr class="subtotal"><td colspan="5">Subtotal: {{.Name}}</td><td class="num">{{.Subtotal}}</td><td colspan="2"></td></tr>{{end}}
+{{end}}{{if $.HasForeign}}<tr class="grand-total"><td colspan="6">Total of {{.ReceiptCount}} counted receipt{{if ne .ReceiptCount 1}}s{{end}} in {{.BaseCurrency}} (each counted once)</td><td class="num">{{.GrandTotal}}</td><td colspan="2"></td></tr>{{else}}<tr class="grand-total"><td colspan="5">Total of {{.ReceiptCount}} receipt{{if ne .ReceiptCount 1}}s{{end}} (each counted once)</td><td class="num">{{.GrandTotal}}</td><td colspan="2"></td></tr>{{end}}
 </tbody>
 </table>
 {{if .MultiCategoryCount}}<p class="note">* This receipt has more than one category, so it is listed under each of them with its full amount. The category subtotals therefore add up to {{.SubtotalsTotal}}, more than the total of {{.GrandTotal}}; {{.MultiCategoryCount}} receipt{{if ne .MultiCategoryCount 1}}s are{{else}} is{{end}} listed more than once.</p>
 {{end}}{{else}}<p class="note">This claim has no receipts.</p>
-{{end}}
+{{end}}{{if .NotConverted}}<h3>Not converted</h3>
+<p class="note">These receipts are in a currency other than {{.BaseCurrency}} and have no recorded conversion, so they are not counted in any figure or total of this packet.</p>
+{{range .NotConverted}}<table>
+<thead><tr><th>Date</th><th>Name</th><th>Paid by</th><th class="num">Amount ({{.Currency}})</th><th>Status</th></tr></thead>
+<tbody>
+{{range .Rows}}<tr><td>{{.Date}}</td><td>{{.Name}} (#{{.Id}})</td><td>{{.PaidBy}}</td><td class="num">{{.Amount}}</td><td>{{.Status}}</td></tr>
+{{end}}<tr class="grand-total"><td colspan="3">Not converted, {{.Currency}}</td><td class="num">{{.Total}}</td><td></td></tr>
+</tbody>
+</table>
+{{end}}{{end}}
 {{range .Receipts}}<div class="page">
 <h2>{{.Row.Name}} (#{{.Row.Id}})</h2>
 <table class="fields">

@@ -11,6 +11,7 @@ Name | Type | Description | Notes
 **enabled** | **bool** | Whether the configuration group has the summary turned on. False comes back at a normal 200 with zeroed rows, so a client with stale group settings renders nothing rather than surfacing an error. | 
 **configurationGroupId** | **int** | The group whose settings produced this breakdown | 
 **position** | [**ReceiptSummaryPosition**](ReceiptSummaryPosition.md) |  | 
+**baseCurrency** | **String** | The currency the legacy row totals are reckoned in: the viewed group's base currency, or the install default under the All group. | [optional] 
 **overall** | [**ReceiptSummaryRow**](ReceiptSummaryRow.md) |  | 
 **statuses** | [**BuiltList&lt;ReceiptSummaryRow&gt;**](ReceiptSummaryRow.md) | One row per configured status, in ReceiptStatus declaration order. A configured status matching no receipt is still present, with zeroed figures. Always present; empty when no status is configured. | 
 

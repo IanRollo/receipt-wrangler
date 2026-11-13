@@ -1097,6 +1097,28 @@ paths:
         - bearerAuth: [ ]
         - apiKeyAuth: [ ]
   # --- End of Claims paths. ---
+  # --- Multicurrency (fork feature) ---
+  /currency:
+    get:
+      tags:
+        - Currency
+      summary: Get the currency table
+      description: >-
+        Returns the active ISO 4217 currency codes the server accepts, with the number of decimal
+        places each allows, ordered by code. [SYSTEM USER]
+      operationId: getCurrencies
+      responses:
+        200:
+          description: The currency table
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CurrencyInfo"
+        500:
+          $ref: "#/components/responses/Internal"
+  # --- End of Multicurrency paths. ---
   /comment/:
     post:
       tags:
@@ -5453,6 +5475,23 @@ components:
             none.
           items:
             $ref: "#/components/schemas/ClaimLedgerEntry"
+        currency:
+          type: string
+          description: >-
+            The claim's currency: its group's base currency, which every money figure of the
+            claim is reckoned in. A linked receipt counts at its amount when it is in that
+            currency, at its recorded baseAmount when converted, and otherwise is unconverted
+            (counted in unconvertedReceiptCount, left out of every figure).
+        unconvertedReceiptCount:
+          type: integer
+          description: Number of linked receipts the caller may see that are unconverted
+        unconvertedTotals:
+          type: array
+          description: >-
+            The unconverted receipts' amounts per currency, by code. Always present; empty when
+            every linked receipt counts.
+          items:
+            $ref: "#/components/schemas/ClaimCurrencyTotal"
     ClaimLedgerEntry:
       type: object
       description: One dated event recorded on a claim after submission
@@ -5535,6 +5574,15 @@ components:
         oldestDaysWaiting:
           type: integer
           description: The largest daysWaiting in the list; absent when no claim has one
+        outstandingTotals:
+          type: array
+          description: >-
+            outstandingTotal per claim currency, by code, over the claims with awaitingSettlement
+            true. Claims of one group share its base currency, so only the All group can show
+            several. outstandingTotal is the total of the one currency present, else of the
+            install default currency. Always present; empty when nothing is awaiting.
+          items:
+            $ref: "#/components/schemas/ClaimCurrencyTotal"
     UpsertClaimCommand:
       type: object
       description: >-
@@ -6020,6 +6068,42 @@ components:
         amount:
           type: string
           description: Receipt total amount
+        currency:
+          type: string
+          description: >-
+            ISO 4217 currency code of the receipt's amount and of its items' amounts (items have
+            no currency of their own). A plain string, never an enum. Never empty on a stored
+            receipt.
+        baseAmount:
+          type: string
+          description: >-
+            What the receipt came to in its group's base currency (decimal string), as the user
+            recorded or the server derived it. Only present when the currency differs from the
+            base currency and a conversion was recorded.
+        baseAmountCurrency:
+          type: string
+          description: >-
+            Read-only, server-set. The ISO 4217 currency baseAmount is in: the group's base
+            currency at the moment the conversion was written. A conversion counts as converted
+            (claim figures, packet) only while this equals the group's current base currency;
+            otherwise the receipt is treated as unconverted and the stored conversion is shown
+            as recorded. Not to be confused with GroupReceiptSettings.baseCurrency.
+        exchangeRate:
+          type: string
+          description: >-
+            Base-currency units per one unit of the receipt's currency (decimal string). Only
+            present alongside baseAmount.
+        exchangeRateDate:
+          type: string
+          description: Calendar day (yyyy-MM-dd) the exchange rate applies to
+        exchangeRateSource:
+          type: string
+          description: Free text saying where the rate came from, e.g. "Card statement"
+        conversionNote:
+          type: string
+          description: >-
+            Read-only warning, present when baseAmount and exchangeRate disagree about the
+            amount by more than 1%. Never blocks a save.
         categories:
           type: array
           description: Categories associated to receipt
@@ -6202,7 +6286,9 @@ components:
           description: >-
             Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS,
             RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES,
-            ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER. Plain string.
+            ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER, CURRENCY, BASE_AMOUNT,
+            EXCHANGE_RATE, EXCHANGE_RATE_DATE, EXCHANGE_RATE_SOURCE. Plain string; a client
+            must tolerate a code it does not know.
         kind:
           type: string
           description: One of CHANGED, ADDED, REMOVED. Plain string.
@@ -6704,6 +6790,16 @@ components:
             Always present; empty when the group totals only the receipt amount.
           items:
             $ref: "#/components/schemas/ReceiptSummaryCustomFieldTotal"
+        currencyTotals:
+          type: array
+          description: >-
+            The same figures once per currency present in the row (base currency first, then by
+            code), because amounts in different currencies are never added. total and
+            customFieldTotals above cover only receipts in the summary's baseCurrency;
+            receiptCount still counts every receipt. Always present; empty when the row covers
+            no receipt.
+          items:
+            $ref: "#/components/schemas/ReceiptSummaryCurrencyTotal"
     ReceiptSummary:
       type: object
       required:
@@ -6725,6 +6821,11 @@ components:
           description: The group whose settings produced this breakdown
         position:
           $ref: "#/components/schemas/ReceiptSummaryPosition"
+        baseCurrency:
+          type: string
+          description: >-
+            The currency the legacy row totals are reckoned in: the viewed group's base
+            currency, or the install default under the All group.
         overall:
           $ref: "#/components/schemas/ReceiptSummaryRow"
         statuses:
@@ -6823,6 +6924,9 @@ components:
           type: integer
         createdAt:
           type: string
+        currency:
+          type: string
+          description: ISO 4217 currency code of the receipt's amount
     PagedData:
       required:
         - data
@@ -7179,6 +7283,15 @@ components:
             hideComments:
               type: boolean
               description: Hide receipt comments
+            defaultCurrency:
+              type: string
+              description: >-
+                The group's stored default ISO 4217 currency; empty means "the install default".
+            baseCurrency:
+              type: string
+              description: >-
+                The group's resolved default currency, never empty. It is also the group's base
+                currency, the one its claims are reckoned in.
             hideShareCategories:
               type: boolean
               description: Hide share categories
@@ -7286,6 +7399,11 @@ components:
         hideComments:
           type: boolean
           description: Hide receipt comments
+        defaultCurrency:
+          type: string
+          description: >-
+            The group's default (and base) ISO 4217 currency; "" clears it back to the install
+            default, an unknown code is a 400. Omit the key to leave the stored value unchanged.
         hideShareCategories:
           type: boolean
           description: Hide share categories
@@ -7710,6 +7828,11 @@ components:
             invalid). Clients work out "today" and display instants (Added At, Resolved Date) in
             it. A receipt's Date is a calendar day and is always read in UTC. A plain string, not
             an enum, so a released client never fails the payload on a zone it does not know.
+        defaultCurrency:
+          type: string
+          description: >-
+            The install's default ISO 4217 currency, resolved ("USD" when unset), never empty.
+            A plain string, never an enum.
         icons:
           type: array
           description: Icons in the system
@@ -7857,6 +7980,31 @@ components:
         amount:
           type: string
           description: Receipt total amount
+        currency:
+          type: string
+          description: >-
+            ISO 4217 currency code. Empty or absent means the group's default currency on a
+            create and the receipt's stored currency on an update. An unknown code is a 400
+            under the currency key. Amounts with more decimal places than the currency allows
+            are a 400 under the amount key (JPY whole, USD 2, JOD 3).
+        baseAmount:
+          type: string
+          description: >-
+            What the receipt came to in the group's base currency. Optional; the server derives
+            it from exchangeRate when only that is given. Ignored (cleared) when currency equals
+            the base currency. On an update, omitting all four conversion keys keeps the stored
+            conversion; sending any of them replaces the whole conversion.
+        exchangeRate:
+          type: string
+          description: >-
+            Base-currency units per one unit of currency. Optional; derived from baseAmount
+            (6 decimal places) when only that is given. Send null or omit it, never "".
+        exchangeRateDate:
+          type: string
+          description: Calendar day (yyyy-MM-dd) the rate applies to. Optional.
+        exchangeRateSource:
+          type: string
+          description: Free text, at most 255 characters. Optional.
         date:
           type: string
           description: Receipt date
@@ -8107,6 +8255,12 @@ components:
                 periods) is worked out in it. A receipt's Date is a calendar day and never shifts
                 with it.
               default: UTC
+            defaultCurrency:
+              type: string
+              description: >-
+                The install's default ISO 4217 currency: what a receipt is stored in when neither
+                the request nor its group names one. A plain string. Defaults to USD.
+              default: USD
             secureCookies:
               type: boolean
               description: >-
@@ -8210,6 +8364,12 @@ components:
             The app time zone, an IANA name such as America/New_York that the server can load
             (an unknown name is a 400 under the timeZone key). Omit the key entirely to leave the
             currently configured value unchanged.
+        defaultCurrency:
+          type: string
+          description: >-
+            The install's default ISO 4217 currency (an unknown code is a 400 under the
+            defaultCurrency key). Omit the key entirely to leave the currently configured value
+            unchanged.
         secureCookies:
           type: boolean
           description: >-
@@ -9039,3 +9199,62 @@ components:
           items:
             type: integer
             format: uint64
+    # --- Multicurrency (fork feature) ---
+    CurrencyInfo:
+      type: object
+      description: One currency in the server's ISO 4217 table
+      required:
+        - code
+        - exponent
+      properties:
+        code:
+          type: string
+          description: ISO 4217 code, e.g. USD. A plain string, never an enum.
+        exponent:
+          type: integer
+          description: >-
+            Decimal places an amount in this currency may have (JPY 0, USD 2, JOD 3). A
+            more precise amount is refused, never rounded.
+        symbol:
+          type: string
+          description: Display symbol where unambiguous; absent otherwise
+    ReceiptSummaryCurrencyTotal:
+      type: object
+      description: A summary row's figures for one currency
+      required:
+        - currency
+        - receiptCount
+        - total
+        - customFieldTotals
+      properties:
+        currency:
+          type: string
+          description: ISO 4217 code
+        receiptCount:
+          type: integer
+          format: int64
+          description: Receipts in this currency
+        total:
+          type: string
+          description: Sum of those receipts' amounts, in this currency
+        customFieldTotals:
+          type: array
+          description: >-
+            The configured currency custom fields' totals over those receipts, in the same order
+            as the row's customFieldTotals. Values are read in the receipt's currency.
+          items:
+            $ref: "#/components/schemas/ReceiptSummaryCustomFieldTotal"
+    ClaimCurrencyTotal:
+      type: object
+      description: An amount in one currency
+      required:
+        - currency
+        - total
+      properties:
+        currency:
+          type: string
+          description: ISO 4217 code
+        total:
+          type: string
+          description: Decimal string at the currency's own number of decimal places
+    # --- End of Multicurrency schemas. ---

@@ -15,7 +15,7 @@ import { ReceiptHistoryValue } from './receiptHistoryValue';
  */
 export interface ReceiptHistoryChange { 
     /**
-     * Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER. Plain string.
+     * Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER, CURRENCY, BASE_AMOUNT, EXCHANGE_RATE, EXCHANGE_RATE_DATE, EXCHANGE_RATE_SOURCE. Plain string; a client must tolerate a code it does not know.
      */
     field: string;
     /**

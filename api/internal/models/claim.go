@@ -61,7 +61,7 @@ type Claim struct {
 	Status          string           `gorm:"size:32;not null;default:'DRAFT'" json:"status"`
 	SubmittedDate   *time.Time       `json:"submittedDate"`
 	DueDate         *time.Time       `json:"dueDate"`
-	ClaimedAmount   *decimal.Decimal `gorm:"type:decimal(10,2)" json:"claimedAmount"`
+	ClaimedAmount   *decimal.Decimal `gorm:"type:decimal(13,3)" json:"claimedAmount"`
 	Notes           string           `gorm:"type:text" json:"notes"`
 }
 
@@ -112,6 +112,6 @@ type ClaimLedgerEntry struct {
 	Claim     *Claim           `gorm:"foreignKey:ClaimId;constraint:OnDelete:CASCADE" json:"-"`
 	EntryType string           `gorm:"column:entry_type;size:32;not null" json:"type"`
 	Date      time.Time        `gorm:"not null" json:"date"`
-	Amount    *decimal.Decimal `gorm:"type:decimal(10,2)" json:"amount"`
+	Amount    *decimal.Decimal `gorm:"type:decimal(13,3)" json:"amount"`
 	Note      string           `gorm:"size:2000" json:"note"`
 }

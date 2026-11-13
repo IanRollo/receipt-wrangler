@@ -17,6 +17,8 @@ class _$ClaimListSummary extends ClaimListSummary {
   final String outstandingTotal;
   @override
   final int? oldestDaysWaiting;
+  @override
+  final BuiltList<ClaimCurrencyTotal>? outstandingTotals;
 
   factory _$ClaimListSummary(
           [void Function(ClaimListSummaryBuilder)? updates]) =>
@@ -27,7 +29,8 @@ class _$ClaimListSummary extends ClaimListSummary {
       required this.claimCount,
       required this.awaitingCount,
       required this.outstandingTotal,
-      this.oldestDaysWaiting})
+      this.oldestDaysWaiting,
+      this.outstandingTotals})
       : super._();
   @override
   ClaimListSummary rebuild(void Function(ClaimListSummaryBuilder) updates) =>
@@ -45,7 +48,8 @@ class _$ClaimListSummary extends ClaimListSummary {
         claimCount == other.claimCount &&
         awaitingCount == other.awaitingCount &&
         outstandingTotal == other.outstandingTotal &&
-        oldestDaysWaiting == other.oldestDaysWaiting;
+        oldestDaysWaiting == other.oldestDaysWaiting &&
+        outstandingTotals == other.outstandingTotals;
   }
 
   @override
@@ -56,6 +60,7 @@ class _$ClaimListSummary extends ClaimListSummary {
     _$hash = $jc(_$hash, awaitingCount.hashCode);
     _$hash = $jc(_$hash, outstandingTotal.hashCode);
     _$hash = $jc(_$hash, oldestDaysWaiting.hashCode);
+    _$hash = $jc(_$hash, outstandingTotals.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -67,7 +72,8 @@ class _$ClaimListSummary extends ClaimListSummary {
           ..add('claimCount', claimCount)
           ..add('awaitingCount', awaitingCount)
           ..add('outstandingTotal', outstandingTotal)
-          ..add('oldestDaysWaiting', oldestDaysWaiting))
+          ..add('oldestDaysWaiting', oldestDaysWaiting)
+          ..add('outstandingTotals', outstandingTotals))
         .toString();
   }
 }
@@ -99,6 +105,12 @@ class ClaimListSummaryBuilder
   set oldestDaysWaiting(int? oldestDaysWaiting) =>
       _$this._oldestDaysWaiting = oldestDaysWaiting;
 
+  ListBuilder<ClaimCurrencyTotal>? _outstandingTotals;
+  ListBuilder<ClaimCurrencyTotal> get outstandingTotals =>
+      _$this._outstandingTotals ??= ListBuilder<ClaimCurrencyTotal>();
+  set outstandingTotals(ListBuilder<ClaimCurrencyTotal>? outstandingTotals) =>
+      _$this._outstandingTotals = outstandingTotals;
+
   ClaimListSummaryBuilder() {
     ClaimListSummary._defaults(this);
   }
@@ -111,6 +123,7 @@ class ClaimListSummaryBuilder
       _awaitingCount = $v.awaitingCount;
       _outstandingTotal = $v.outstandingTotal;
       _oldestDaysWaiting = $v.oldestDaysWaiting;
+      _outstandingTotals = $v.outstandingTotals?.toBuilder();
       _$v = null;
     }
     return this;
@@ -130,18 +143,32 @@ class ClaimListSummaryBuilder
   ClaimListSummary build() => _build();
 
   _$ClaimListSummary _build() {
-    final _$result = _$v ??
-        _$ClaimListSummary._(
-          asOfDate: BuiltValueNullFieldError.checkNotNull(
-              asOfDate, r'ClaimListSummary', 'asOfDate'),
-          claimCount: BuiltValueNullFieldError.checkNotNull(
-              claimCount, r'ClaimListSummary', 'claimCount'),
-          awaitingCount: BuiltValueNullFieldError.checkNotNull(
-              awaitingCount, r'ClaimListSummary', 'awaitingCount'),
-          outstandingTotal: BuiltValueNullFieldError.checkNotNull(
-              outstandingTotal, r'ClaimListSummary', 'outstandingTotal'),
-          oldestDaysWaiting: oldestDaysWaiting,
-        );
+    _$ClaimListSummary _$result;
+    try {
+      _$result = _$v ??
+          _$ClaimListSummary._(
+            asOfDate: BuiltValueNullFieldError.checkNotNull(
+                asOfDate, r'ClaimListSummary', 'asOfDate'),
+            claimCount: BuiltValueNullFieldError.checkNotNull(
+                claimCount, r'ClaimListSummary', 'claimCount'),
+            awaitingCount: BuiltValueNullFieldError.checkNotNull(
+                awaitingCount, r'ClaimListSummary', 'awaitingCount'),
+            outstandingTotal: BuiltValueNullFieldError.checkNotNull(
+                outstandingTotal, r'ClaimListSummary', 'outstandingTotal'),
+            oldestDaysWaiting: oldestDaysWaiting,
+            outstandingTotals: _outstandingTotals?.build(),
+          );
+    } catch (_) {
+      late String _$failedField;
+      try {
+        _$failedField = 'outstandingTotals';
+        _outstandingTotals?.build();
+      } catch (e) {
+        throw BuiltValueNestedFieldError(
+            r'ClaimListSummary', _$failedField, e.toString());
+      }
+      rethrow;
+    }
     replace(_$result);
     return _$result;
   }

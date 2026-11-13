@@ -29,6 +29,22 @@ type ReceiptSummaryRow struct {
 	ReceiptCount      int64                            `json:"receiptCount"`
 	Total             decimal.Decimal                  `json:"total"`
 	CustomFieldTotals []ReceiptSummaryCustomFieldTotal `json:"customFieldTotals"`
+	// CurrencyTotals (multicurrency, fork feature) is the same figures once per currency present
+	// in the row, base currency first and the rest by code, because amounts in different
+	// currencies are never added. Always [] when empty, never null.
+	//
+	// The legacy Total and CustomFieldTotals above now cover ONLY receipts in the summary's
+	// BaseCurrency (a receipt with no currency counts as the base). ReceiptCount still counts
+	// every receipt in the filter, so it keeps agreeing with the table.
+	CurrencyTotals []ReceiptSummaryCurrencyTotal `json:"currencyTotals"`
+}
+
+// ReceiptSummaryCurrencyTotal is one currency's figures within a row.
+type ReceiptSummaryCurrencyTotal struct {
+	Currency          string                           `json:"currency"`
+	ReceiptCount      int64                            `json:"receiptCount"`
+	Total             decimal.Decimal                  `json:"total"`
+	CustomFieldTotals []ReceiptSummaryCustomFieldTotal `json:"customFieldTotals"`
 }
 
 // ReceiptSummary is the whole block.
@@ -48,6 +64,9 @@ type ReceiptSummary struct {
 	Enabled              bool                          `json:"enabled"`
 	ConfigurationGroupId uint                          `json:"configurationGroupId"`
 	Position             models.ReceiptSummaryPosition `json:"position"`
+	// BaseCurrency is the currency the legacy row totals are reckoned in: the group's base
+	// currency, or the install default under the All group. Never "".
+	BaseCurrency string `json:"baseCurrency"`
 	Overall              ReceiptSummaryRow             `json:"overall"`
 	Statuses             []ReceiptSummaryRow           `json:"statuses"`
 }

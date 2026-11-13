@@ -21,6 +21,7 @@ part 'search_result.g.dart';
 /// * [receiptStatus] 
 /// * [paidByUserId] 
 /// * [createdAt] 
+/// * [currency] - ISO 4217 currency code of the receipt's amount
 @BuiltValue()
 abstract class SearchResult implements Built<SearchResult, SearchResultBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -50,6 +51,10 @@ abstract class SearchResult implements Built<SearchResult, SearchResultBuilder> 
 
   @BuiltValueField(wireName: r'createdAt')
   String get createdAt;
+
+  /// ISO 4217 currency code of the receipt's amount
+  @BuiltValueField(wireName: r'currency')
+  String? get currency;
 
   SearchResult._();
 
@@ -125,6 +130,13 @@ class _$SearchResultSerializer implements PrimitiveSerializer<SearchResult> {
       object.createdAt,
       specifiedType: const FullType(String),
     );
+    if (object.currency != null) {
+      yield r'currency';
+      yield serializers.serialize(
+        object.currency,
+        specifiedType: const FullType(String),
+      );
+    }
   }
 
   @override
@@ -210,6 +222,13 @@ class _$SearchResultSerializer implements PrimitiveSerializer<SearchResult> {
             specifiedType: const FullType(String),
           ) as String;
           result.createdAt = valueDes;
+          break;
+        case r'currency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.currency = valueDes;
           break;
         default:
           unhandled.add(key);

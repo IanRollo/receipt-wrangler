@@ -12,7 +12,7 @@ part 'receipt_history_change.g.dart';
 /// One field-level change within a history entry
 ///
 /// Properties:
-/// * [field] - Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER. Plain string.
+/// * [field] - Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER, CURRENCY, BASE_AMOUNT, EXCHANGE_RATE, EXCHANGE_RATE_DATE, EXCHANGE_RATE_SOURCE. Plain string; a client must tolerate a code it does not know.
 /// * [kind] - One of CHANGED, ADDED, REMOVED. Plain string.
 /// * [label] - What the change is about, where the field alone does not say: the item's name (ITEM, ITEM_CATEGORIES, ITEM_TAGS) or the custom field's name (CUSTOM_FIELD)
 /// * [userId] - The share's charged-to user (SHARE) or the comment's author (COMMENT)
@@ -20,7 +20,7 @@ part 'receipt_history_change.g.dart';
 /// * [to] 
 @BuiltValue()
 abstract class ReceiptHistoryChange implements Built<ReceiptHistoryChange, ReceiptHistoryChangeBuilder> {
-  /// Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER. Plain string.
+  /// Which field changed. One of NAME, AMOUNT, DATE, GROUP, PAID_BY, STATUS, RESOLVED_DATE, CATEGORIES, TAGS, CUSTOM_FIELD, ITEM, SHARE, ITEM_CATEGORIES, ITEM_TAGS, COMMENT, IMAGE, EMAIL_INBOX, EMAIL_SENDER, CURRENCY, BASE_AMOUNT, EXCHANGE_RATE, EXCHANGE_RATE_DATE, EXCHANGE_RATE_SOURCE. Plain string; a client must tolerate a code it does not know.
   @BuiltValueField(wireName: r'field')
   String get field;
 

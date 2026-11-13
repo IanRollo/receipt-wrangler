@@ -102,6 +102,10 @@ export interface SystemSettings {
      */
     timeZone?: string;
     /**
+     * The install\'s default ISO 4217 currency: what a receipt is stored in when neither the request nor its group names one. A plain string. Defaults to USD.
+     */
+    defaultCurrency?: string;
+    /**
      * Marks every cookie the server sets as Secure, so browsers only send them over HTTPS. Recommended for any install served over HTTPS. Off by default, because a browser drops a Secure cookie set over plain HTTP, which breaks login.
      */
     secureCookies?: boolean;

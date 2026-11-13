@@ -72,6 +72,10 @@ func CreateClaim(w http.ResponseWriter, r *http.Request) {
 				return 0, nil
 			}
 
+			if !enforceClaimAmountExponent(w, uintGroupId, "claimedAmount", command.ClaimedAmount.Value) {
+				return 0, nil
+			}
+
 			claim, err := services.NewClaimService(nil).CreateClaim(structs.GetClaims(r).UserId, uintGroupId, command)
 			if errors.Is(err, services.ErrClaimAllGroupDestination) {
 				utils.WriteCustomErrorResponse(w, "A claim cannot be created in the All group", http.StatusBadRequest)
@@ -101,6 +105,10 @@ func UpdateClaim(w http.ResponseWriter, r *http.Request) {
 		func(w http.ResponseWriter, r *http.Request, claimId uint) (int, error) {
 			command := commands.UpsertClaimCommand{}
 			if !loadAndValidate(w, r, &command, command.Validate) {
+				return 0, nil
+			}
+
+			if !enforceClaimAmountExponentForClaim(w, claimId, "claimedAmount", command.ClaimedAmount.Value) {
 				return 0, nil
 			}
 
@@ -164,6 +172,10 @@ func CreateClaimLedgerEntry(w http.ResponseWriter, r *http.Request) {
 				return 0, nil
 			}
 
+			if !enforceClaimAmountExponentForClaim(w, claimId, "amount", command.Amount.Value) {
+				return 0, nil
+			}
+
 			entry, err := services.NewClaimService(nil).CreateLedgerEntry(structs.GetClaims(r).UserId, claimId, command)
 			if handled, status, err := claimServiceError(w, err); handled {
 				return status, err
@@ -182,6 +194,10 @@ func UpdateClaimLedgerEntry(w http.ResponseWriter, r *http.Request) {
 
 			command := commands.UpsertClaimLedgerEntryCommand{}
 			if !loadAndValidate(w, r, &command, command.Validate) {
+				return 0, nil
+			}
+
+			if !enforceClaimAmountExponentForClaim(w, claimId, "amount", command.Amount.Value) {
 				return 0, nil
 			}
 

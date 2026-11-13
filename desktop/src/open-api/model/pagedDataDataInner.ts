@@ -42,6 +42,34 @@ export interface PagedDataDataInner {
      */
     amount: string;
     /**
+     * ISO 4217 currency code of the receipt\'s amount and of its items\' amounts (items have no currency of their own). A plain string, never an enum. Never empty on a stored receipt.
+     */
+    currency?: string;
+    /**
+     * What the receipt came to in its group\'s base currency (decimal string), as the user recorded or the server derived it. Only present when the currency differs from the base currency and a conversion was recorded.
+     */
+    baseAmount?: string;
+    /**
+     * Read-only, server-set. The ISO 4217 currency baseAmount is in: the group\'s base currency at the moment the conversion was written. A conversion counts as converted (claim figures, packet) only while this equals the group\'s current base currency; otherwise the receipt is treated as unconverted and the stored conversion is shown as recorded. Not to be confused with GroupReceiptSettings.baseCurrency.
+     */
+    baseAmountCurrency?: string;
+    /**
+     * Base-currency units per one unit of the receipt\'s currency (decimal string). Only present alongside baseAmount.
+     */
+    exchangeRate?: string;
+    /**
+     * Calendar day (yyyy-MM-dd) the exchange rate applies to
+     */
+    exchangeRateDate?: string;
+    /**
+     * Free text saying where the rate came from, e.g. \"Card statement\"
+     */
+    exchangeRateSource?: string;
+    /**
+     * Read-only warning, present when baseAmount and exchangeRate disagree about the amount by more than 1%. Never blocks a save.
+     */
+    conversionNote?: string;
+    /**
      * Categories associated to receipt
      */
     categories: Array<Category>;

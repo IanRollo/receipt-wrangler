@@ -174,6 +174,7 @@ func (service ReceiptService) SearchReceiptsForUser(userId uint, query string, l
 			ReceiptStatus: receipt.Status,
 			PaidByUserId:  receipt.PaidByUserID,
 			CreatedAt:     receipt.CreatedAt,
+			Currency:      receipt.Currency,
 		})
 	}
 

@@ -86,7 +86,7 @@ func (service ClaimService) GetClaimsForGroup(userId uint, groupId uint) (struct
 		return structs.ClaimListView{}, err
 	}
 
-	return buildClaimList(folds, today), nil
+	return buildClaimList(folds, today, repositories.InstallDefaultCurrency(service.TX)), nil
 }
 
 // GetClaimForUser returns one claim the caller may see, or ErrClaimNotFound.
@@ -252,7 +252,8 @@ func (service ClaimService) RemoveReceiptsFromClaim(userId uint, claimId uint, r
 }
 
 func (service ClaimService) CreateLedgerEntry(userId uint, claimId uint, command commands.UpsertClaimLedgerEntryCommand) (structs.ClaimLedgerEntryView, error) {
-	if _, err := service.loadVisibleClaim(userId, claimId); err != nil {
+	claim, err := service.loadVisibleClaim(userId, claimId)
+	if err != nil {
 		return structs.ClaimLedgerEntryView{}, err
 	}
 
@@ -264,11 +265,15 @@ func (service ClaimService) CreateLedgerEntry(userId uint, claimId uint, command
 	if err != nil {
 		return structs.ClaimLedgerEntryView{}, err
 	}
-	return buildLedgerEntryView(created), nil
+	return buildLedgerEntryView(created, repositories.GroupBaseCurrency(service.TX, claim.GroupId)), nil
 }
 
 func (service ClaimService) UpdateLedgerEntry(userId uint, claimId uint, entryId uint, command commands.UpsertClaimLedgerEntryCommand) (structs.ClaimLedgerEntryView, error) {
 	if _, err := service.loadVisibleLedgerEntry(userId, claimId, entryId); err != nil {
+		return structs.ClaimLedgerEntryView{}, err
+	}
+	claim, err := service.loadVisibleClaim(userId, claimId)
+	if err != nil {
 		return structs.ClaimLedgerEntryView{}, err
 	}
 
@@ -281,7 +286,7 @@ func (service ClaimService) UpdateLedgerEntry(userId uint, claimId uint, entryId
 	if err != nil {
 		return structs.ClaimLedgerEntryView{}, err
 	}
-	return buildLedgerEntryView(updated), nil
+	return buildLedgerEntryView(updated, repositories.GroupBaseCurrency(service.TX, claim.GroupId)), nil
 }
 
 func (service ClaimService) DeleteLedgerEntry(userId uint, claimId uint, entryId uint) error {
@@ -507,6 +512,12 @@ func (service ClaimService) foldClaims(userId uint, claims []models.Claim, today
 		return nil, err
 	}
 
+	groupIds := make([]uint, 0, len(visibleClaims))
+	for _, claim := range visibleClaims {
+		groupIds = append(groupIds, claim.GroupId)
+	}
+	baseCurrencies := repositories.GroupBaseCurrencies(service.TX, groupIds)
+
 	folds := make([]claimFold, 0, len(visibleClaims))
 	for _, claim := range visibleClaims {
 		receipts := make([]repositories.LinkedReceipt, 0, len(linked[claim.ID]))
@@ -527,7 +538,7 @@ func (service ClaimService) foldClaims(userId uint, claims []models.Claim, today
 			}
 		}
 
-		folds = append(folds, foldClaim(claim, receipts, claimEntries, today))
+		folds = append(folds, foldClaim(claim, receipts, claimEntries, today, baseCurrencies[claim.GroupId]))
 	}
 
 	return folds, nil
@@ -537,13 +548,17 @@ func (service ClaimService) foldClaims(userId uint, claims []models.Claim, today
 // may see. Money is folded with shopspring/decimal, never a SQL SUM: SQLite has no
 // decimal type, so a SUM would report different cents there than on
 // Postgres/MySQL. Pure, so the arithmetic is testable without a database.
-func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entries []models.ClaimLedgerEntry, today time.Time) claimFold {
+//
+// baseCurrency is the claim's group's base currency: every figure is reckoned in it, and a
+// receipt in another currency counts only through its recorded conversion (see
+// foldClaimReceipts); the rest are reported as unconverted.
+func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entries []models.ClaimLedgerEntry, today time.Time, baseCurrency string) claimFold {
 	receiptIds := make([]uint, 0, len(receipts))
-	receiptsTotal := decimal.Zero
 	for _, receipt := range receipts {
 		receiptIds = append(receiptIds, receipt.ReceiptId)
-		receiptsTotal = receiptsTotal.Add(receipt.Amount)
 	}
+	receiptFigures := foldClaimReceipts(receipts, baseCurrency)
+	receiptsTotal := receiptFigures.counted
 
 	effectiveClaimed := receiptsTotal
 	if claim.ClaimedAmount != nil {
@@ -554,7 +569,7 @@ func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entrie
 	recoupments := decimal.Zero
 	entryViews := make([]structs.ClaimLedgerEntryView, 0, len(entries))
 	for _, entry := range entries {
-		entryViews = append(entryViews, buildLedgerEntryView(entry))
+		entryViews = append(entryViews, buildLedgerEntryView(entry, baseCurrency))
 		if entry.Amount == nil {
 			continue
 		}
@@ -570,6 +585,7 @@ func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entrie
 	outstanding := effectiveClaimed.Sub(paid)
 	awaiting := models.ClaimStatusAwaitsSettlement(claim.Status)
 
+	money := func(value decimal.Decimal) string { return formatMoneyIn(value, baseCurrency) }
 	view := structs.ClaimView{
 		Id:                     claim.ID,
 		GroupId:                claim.GroupId,
@@ -586,16 +602,20 @@ func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entrie
 		CreatedBy:              claim.CreatedBy,
 		ReceiptIds:             receiptIds,
 		ReceiptCount:           len(receiptIds),
-		ReceiptsTotal:          formatClaimMoney(receiptsTotal),
-		EffectiveClaimedAmount: formatClaimMoney(effectiveClaimed),
-		PaymentsTotal:          formatClaimMoney(payments),
-		RecoupmentsTotal:       formatClaimMoney(recoupments),
-		PaidAmount:             formatClaimMoney(paid),
-		OutstandingAmount:      formatClaimMoney(outstanding),
+		ReceiptsTotal:          money(receiptsTotal),
+		EffectiveClaimedAmount: money(effectiveClaimed),
+		PaymentsTotal:          money(payments),
+		RecoupmentsTotal:       money(recoupments),
+		PaidAmount:             money(paid),
+		OutstandingAmount:      money(outstanding),
 		LedgerEntries:          entryViews,
+
+		Currency:                baseCurrency,
+		UnconvertedReceiptCount: receiptFigures.unconvertedCount,
+		UnconvertedTotals:       receiptFigures.unconvertedTotalViews(),
 	}
 	if claim.ClaimedAmount != nil {
-		view.ClaimedAmount = formatClaimMoney(*claim.ClaimedAmount)
+		view.ClaimedAmount = money(*claim.ClaimedAmount)
 	}
 	if awaiting && claim.SubmittedDate != nil {
 		days := daysBetween(utils.CalendarDayUTC(claim.SubmittedDate.UTC()), today)
@@ -606,9 +626,13 @@ func foldClaim(claim models.Claim, receipts []repositories.LinkedReceipt, entrie
 }
 
 // buildClaimList adds the header figures over the claims in the list.
-func buildClaimList(folds []claimFold, today time.Time) structs.ClaimListView {
+//
+// Outstanding amounts are never added across currencies: they are totalled per claim
+// currency (OutstandingTotals), and the legacy scalar is the total of the one currency
+// present, else of installCurrency (the install default).
+func buildClaimList(folds []claimFold, today time.Time, installCurrency string) structs.ClaimListView {
 	claims := make([]structs.ClaimView, 0, len(folds))
-	outstandingTotal := decimal.Zero
+	outstandingByCurrency := map[string]decimal.Decimal{}
 	awaitingCount := 0
 	var oldest *int
 
@@ -618,12 +642,20 @@ func buildClaimList(folds []claimFold, today time.Time) structs.ClaimListView {
 			continue
 		}
 		awaitingCount++
-		outstandingTotal = outstandingTotal.Add(fold.outstanding)
+		outstandingByCurrency[fold.view.Currency] = outstandingByCurrency[fold.view.Currency].Add(fold.outstanding)
 		if fold.view.DaysWaiting != nil && (oldest == nil || *fold.view.DaysWaiting > *oldest) {
 			days := *fold.view.DaysWaiting
 			oldest = &days
 		}
 	}
+
+	scalarCurrency := installCurrency
+	if len(outstandingByCurrency) == 1 {
+		for code := range outstandingByCurrency {
+			scalarCurrency = code
+		}
+	}
+	outstandingTotal := outstandingByCurrency[scalarCurrency]
 
 	return structs.ClaimListView{
 		Claims: claims,
@@ -631,13 +663,14 @@ func buildClaimList(folds []claimFold, today time.Time) structs.ClaimListView {
 			AsOfDate:          today.Format(claimDayFormat),
 			ClaimCount:        len(claims),
 			AwaitingCount:     awaitingCount,
-			OutstandingTotal:  formatClaimMoney(outstandingTotal),
+			OutstandingTotal:  formatMoneyIn(outstandingTotal, scalarCurrency),
+			OutstandingTotals: currencyTotalViews(outstandingByCurrency),
 			OldestDaysWaiting: oldest,
 		},
 	}
 }
 
-func buildLedgerEntryView(entry models.ClaimLedgerEntry) structs.ClaimLedgerEntryView {
+func buildLedgerEntryView(entry models.ClaimLedgerEntry, baseCurrency string) structs.ClaimLedgerEntryView {
 	view := structs.ClaimLedgerEntryView{
 		Id:        entry.ID,
 		ClaimId:   entry.ClaimId,
@@ -649,7 +682,7 @@ func buildLedgerEntryView(entry models.ClaimLedgerEntry) structs.ClaimLedgerEntr
 		CreatedBy: entry.CreatedBy,
 	}
 	if entry.Amount != nil {
-		view.Amount = formatClaimMoney(*entry.Amount)
+		view.Amount = formatMoneyIn(*entry.Amount, baseCurrency)
 	}
 	return view
 }

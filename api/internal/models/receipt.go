@@ -9,7 +9,7 @@ import (
 type Receipt struct {
 	BaseModel
 	Name         string             `gorm:"not null" json:"name"`
-	Amount       decimal.Decimal    `gorm:"type:decimal(10,2);not null" json:"amount"`
+	Amount       decimal.Decimal    `gorm:"type:decimal(13,3);not null" json:"amount"`
 	Date         time.Time          `gorm:"not null" json:"date"`
 	ResolvedDate *time.Time         `json:"resolvedDate"`
 	PaidByUserID uint               `json:"paidByUserId"`
@@ -23,6 +23,8 @@ type Receipt struct {
 	ReceiptItems []Item             `json:"receiptItems"`
 	Comments     []Comment          `json:"comments"`
 	CustomFields []CustomFieldValue `json:"customFields"`
+	// Multicurrency (fork feature): see internal/currency and ReceiptMulticurrency.
+	ReceiptMulticurrency
 	// EmailInbox and EmailSender record where a receipt created from an email
 	// came from: the System Email login (IMAP username) it was read from, and
 	// the sender's From address. Only the email task sets them (see

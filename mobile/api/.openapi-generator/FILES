@@ -27,6 +27,7 @@ doc/ChartGrouping.md
 doc/CheckEmailConnectivityCommand.md
 doc/CheckReceiptProcessingSettingsConnectivityCommand.md
 doc/Claim.md
+doc/ClaimCurrencyTotal.md
 doc/ClaimLedgerEntry.md
 doc/ClaimList.md
 doc/ClaimListSummary.md
@@ -36,6 +37,8 @@ doc/ClaimReceiptsResult.md
 doc/Claims.md
 doc/Comment.md
 doc/CommentApi.md
+doc/CurrencyApi.md
+doc/CurrencyInfo.md
 doc/CurrencySeparator.md
 doc/CurrencySymbolPosition.md
 doc/CustomField.md
@@ -121,6 +124,7 @@ doc/ReceiptRequirements.md
 doc/ReceiptStatus.md
 doc/ReceiptSummary.md
 doc/ReceiptSummaryCommand.md
+doc/ReceiptSummaryCurrencyTotal.md
 doc/ReceiptSummaryCustomFieldTotal.md
 doc/ReceiptSummaryPosition.md
 doc/ReceiptSummaryRow.md
@@ -199,6 +203,7 @@ lib/src/api/api_key_api.dart
 lib/src/api/auth_api.dart
 lib/src/api/category_api.dart
 lib/src/api/comment_api.dart
+lib/src/api/currency_api.dart
 lib/src/api/custom_field_api.dart
 lib/src/api/dashboard_api.dart
 lib/src/api/export_api.dart
@@ -255,6 +260,7 @@ lib/src/model/chart_grouping.dart
 lib/src/model/check_email_connectivity_command.dart
 lib/src/model/check_receipt_processing_settings_connectivity_command.dart
 lib/src/model/claim.dart
+lib/src/model/claim_currency_total.dart
 lib/src/model/claim_ledger_entry.dart
 lib/src/model/claim_list.dart
 lib/src/model/claim_list_summary.dart
@@ -263,6 +269,7 @@ lib/src/model/claim_receipts_failure.dart
 lib/src/model/claim_receipts_result.dart
 lib/src/model/claims.dart
 lib/src/model/comment.dart
+lib/src/model/currency_info.dart
 lib/src/model/currency_separator.dart
 lib/src/model/currency_symbol_position.dart
 lib/src/model/custom_field.dart
@@ -334,6 +341,7 @@ lib/src/model/receipt_requirements.dart
 lib/src/model/receipt_status.dart
 lib/src/model/receipt_summary.dart
 lib/src/model/receipt_summary_command.dart
+lib/src/model/receipt_summary_currency_total.dart
 lib/src/model/receipt_summary_custom_field_total.dart
 lib/src/model/receipt_summary_position.dart
 lib/src/model/receipt_summary_row.dart
@@ -397,6 +405,7 @@ lib/src/model/widget.dart
 lib/src/model/widget_type.dart
 lib/src/serializers.dart
 pubspec.yaml
+test/claim_currency_total_test.dart
 test/claim_ledger_entry_test.dart
 test/claim_list_summary_test.dart
 test/claim_list_test.dart
@@ -404,6 +413,8 @@ test/claim_receipts_command_test.dart
 test/claim_receipts_failure_test.dart
 test/claim_receipts_result_test.dart
 test/claim_test.dart
+test/currency_api_test.dart
+test/currency_info_test.dart
 test/processing_queue_api_test.dart
 test/processing_queue_item_test.dart
 test/processing_queue_list_test.dart
@@ -413,6 +424,7 @@ test/receipt_history_entry_test.dart
 test/receipt_history_snapshots_test.dart
 test/receipt_history_test.dart
 test/receipt_history_value_test.dart
+test/receipt_summary_currency_total_test.dart
 test/reimbursement_claim_api_test.dart
 test/upsert_claim_command_test.dart
 test/upsert_claim_ledger_entry_command_test.dart

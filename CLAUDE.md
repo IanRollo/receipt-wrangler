@@ -810,7 +810,8 @@ See `api/CLAUDE.md` → "Reimbursement claims (fork feature)".
 ### Processing Queue (fork feature)
 
 A list of the quick scans and email uploads that have **not succeeded**: waiting, being processed,
-retrying after an error, or failed. **Backend first; the desktop page follows.** See `api/CLAUDE.md` →
+retrying after an error, or failed. **Backend + desktop** (the Processing page, see `desktop/CLAUDE.md`
+→ "Processing queue (fork feature)"); mobile only carries the regenerated client. See `api/CLAUDE.md` →
 "Processing queue (fork feature)".
 
 - **Read from asynq, not the database.** `system_tasks` rows are written only as each step finishes,
@@ -824,6 +825,42 @@ retrying after an error, or failed. **Backend first; the desktop page follows.**
 - **The routes are keyed by queue + asynq task id**, not system task id, so they work for every item.
   `systemTaskId` rides on an item when a row exists, for the existing activity routes.
 - Purely additive on the wire: new `/processingQueue/*` paths and `ProcessingQueue*` schemas only.
+
+### Multicurrency (fork feature, slice A)
+
+Every receipt now carries an explicit ISO 4217 currency, amounts are never summed across currencies,
+and the user can record the conversion they were actually charged (amount in the group's base
+currency, rate, rate date, source) as evidence. **Backend done; the desktop UI is in progress;
+mobile carries only the regenerated client**, so the released app shows foreign amounts without
+their code (and a three-place amount through the existing display). See `api/CLAUDE.md` →
+"Multicurrency (fork feature)".
+
+- **Purely additive on the wire.** New optional properties on existing schemas, new `CurrencyInfo`,
+  `ReceiptSummaryCurrencyTotal` and `ClaimCurrencyTotal`, and `GET /currency`. Every code is a
+  **plain string, never an enum**; arrays are `[]`; decimals are strings; the rate date is a bare
+  `yyyy-MM-dd`. No change to any enum or `required` list. Regenerate `mobile/api/` and the desktop
+  client in the same change as any later edit.
+- **Resolution.** Request, else (update) the stored currency, else the group's default, else the
+  install default (`SystemSettings.defaultCurrency`, resolved on `AppData.defaultCurrency`). An empty
+  or absent currency is "default", never an error: released mobile builds send none, and an old
+  client editing a EUR receipt must not turn it into USD. The group's resolved default is its **base
+  currency**, exposed as `GroupReceiptSettings.baseCurrency`; claims are reckoned in it.
+- **Precision.** Amounts are validated by the currency's exponent (JPY whole, USD 2, JOD 3) and
+  refused, not rounded; only AI-sourced amounts are rounded (half-even). Storage widened to
+  `decimal(13,3)` (AutoMigrate does the ALTER on Postgres/MySQL; untested there).
+- **Conversions are stamped.** `Receipt.baseAmountCurrency` (read-only, server-set) records the
+  base currency a `baseAmount` was written against; a conversion counts toward claim figures and
+  the packet only while it equals the group's *current* base, so changing a group's default
+  currency never silently relabels evidence (the receipt turns "unconverted" and its stored
+  conversion stays visible).
+- **Figures.** Receipt Summary's legacy `total` covers the base currency only, with
+  `currencyTotals` per currency alongside. A claim counts base-currency receipts at their amount,
+  converted ones at their recorded base amount, and reports the rest as unconverted. The packet's
+  cover sheet says so prominently and lists them in a "Not converted" block.
+- **Not yet currency-aware (slice B):** the Report Builder, the dashboard pie chart and
+  who-owes-whom. They still sum bare amounts; see `api/CLAUDE.md` for what each needs.
+- **Backfill.** A one-time migration labels every existing receipt with the install default, and
+  upgrades the stored default AI prompt if (and only if) it was never edited.
 
 ### State Management Patterns
 - **Backend**: Service layer handles business logic, repositories handle data access

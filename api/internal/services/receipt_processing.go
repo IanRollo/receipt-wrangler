@@ -170,6 +170,10 @@ func (service ReceiptProcessingService) readReceipt(
 		receipt = result.Receipt
 	}
 
+	if err == nil {
+		normalizeAiCurrency(&receipt, service.Group.ID, service.TX)
+	}
+
 	return receipt, metadata, err
 }
 
@@ -270,7 +274,7 @@ func (service ReceiptProcessingService) processImages(
 		return result, err
 	}
 
-	cleanedResponse := service.cleanResponse(response)
+	cleanedResponse := sanitizeAiMulticurrency(service.cleanResponse(response))
 
 	err = json.Unmarshal([]byte(cleanedResponse), &receipt)
 	if err != nil {

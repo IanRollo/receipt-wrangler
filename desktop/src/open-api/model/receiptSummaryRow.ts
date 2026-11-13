@@ -9,6 +9,7 @@
  */
 import { ReceiptSummaryCustomFieldTotal } from './receiptSummaryCustomFieldTotal';
 import { ReceiptStatus } from './receiptStatus';
+import { ReceiptSummaryCurrencyTotal } from './receiptSummaryCurrencyTotal';
 
 
 export interface ReceiptSummaryRow { 
@@ -25,6 +26,10 @@ export interface ReceiptSummaryRow {
      * One entry per configured currency custom field, in the configured order. Always present; empty when the group totals only the receipt amount.
      */
     customFieldTotals: Array<ReceiptSummaryCustomFieldTotal>;
+    /**
+     * The same figures once per currency present in the row (base currency first, then by code), because amounts in different currencies are never added. total and customFieldTotals above cover only receipts in the summary\'s baseCurrency; receiptCount still counts every receipt. Always present; empty when the row covers no receipt.
+     */
+    currencyTotals?: Array<ReceiptSummaryCurrencyTotal>;
 }
 export namespace ReceiptSummaryRow {
 }

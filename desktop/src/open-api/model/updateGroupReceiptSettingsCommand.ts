@@ -38,6 +38,10 @@ export interface UpdateGroupReceiptSettingsCommand {
      */
     hideComments?: boolean;
     /**
+     * The group\'s default (and base) ISO 4217 currency; \"\" clears it back to the install default, an unknown code is a 400. Omit the key to leave the stored value unchanged.
+     */
+    defaultCurrency?: string;
+    /**
      * Hide share categories
      */
     hideShareCategories?: boolean;

@@ -17,6 +17,7 @@ Name | Type | Description | Notes
 **receiptStatus** | [**ReceiptStatus**](ReceiptStatus.md) |  | [optional] 
 **paidByUserId** | **int** |  | [optional] 
 **createdAt** | **String** |  | 
+**currency** | **String** | ISO 4217 currency code of the receipt's amount | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

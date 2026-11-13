@@ -66,6 +66,10 @@ export interface AppData {
      */
     timeZone?: string;
     /**
+     * The install\'s default ISO 4217 currency, resolved (\"USD\" when unset), never empty. A plain string, never an enum.
+     */
+    defaultCurrency?: string;
+    /**
      * Icons in the system
      */
     icons: Array<Icon>;

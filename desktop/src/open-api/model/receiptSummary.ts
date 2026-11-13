@@ -21,6 +21,10 @@ export interface ReceiptSummary {
      */
     configurationGroupId: number;
     position: ReceiptSummaryPosition;
+    /**
+     * The currency the legacy row totals are reckoned in: the viewed group\'s base currency, or the install default under the All group.
+     */
+    baseCurrency?: string;
     overall: ReceiptSummaryRow;
     /**
      * One row per configured status, in ReceiptStatus declaration order. A configured status matching no receipt is still present, with zeroed figures. Always present; empty when no status is configured.

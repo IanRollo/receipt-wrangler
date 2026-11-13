@@ -6,6 +6,7 @@ api/apiKey.service.ts
 api/auth.service.ts
 api/category.service.ts
 api/comment.service.ts
+api/currency.service.ts
 api/customField.service.ts
 api/dashboard.service.ts
 api/export.service.ts
@@ -59,6 +60,7 @@ model/chartGrouping.ts
 model/checkEmailConnectivityCommand.ts
 model/checkReceiptProcessingSettingsConnectivityCommand.ts
 model/claim.ts
+model/claimCurrencyTotal.ts
 model/claimLedgerEntry.ts
 model/claimList.ts
 model/claimListSummary.ts
@@ -67,6 +69,7 @@ model/claimReceiptsFailure.ts
 model/claimReceiptsResult.ts
 model/claims.ts
 model/comment.ts
+model/currencyInfo.ts
 model/currencySeparator.ts
 model/currencySymbolPosition.ts
 model/customField.ts
@@ -138,6 +141,7 @@ model/receiptRequirements.ts
 model/receiptStatus.ts
 model/receiptSummary.ts
 model/receiptSummaryCommand.ts
+model/receiptSummaryCurrencyTotal.ts
 model/receiptSummaryCustomFieldTotal.ts
 model/receiptSummaryPosition.ts
 model/receiptSummaryRow.ts

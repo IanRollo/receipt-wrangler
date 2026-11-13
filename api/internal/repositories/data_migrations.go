@@ -35,6 +35,9 @@ type dataMigration struct {
 var dataMigrations = []dataMigration{
 	{name: assignLegacyEquivalentRolesMigration, run: assignLegacyEquivalentRoles},
 	{name: removeAppReceiptHistoryReadMigration, run: removeAppReceiptHistoryRead},
+	{name: backfillReceiptCurrencyMigration, run: backfillReceiptCurrency},
+	{name: upgradeDefaultPromptCurrencyMigration, run: upgradeDefaultPromptCurrency},
+	{name: stampConversionCurrencyMigration, run: stampConversionCurrency},
 }
 
 // RunDataMigrations applies any registered one-time data migrations that have

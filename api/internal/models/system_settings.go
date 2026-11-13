@@ -65,4 +65,9 @@ type SystemSettings struct {
 	// cookie set over http — turning this on there breaks login. See
 	// services.UseSecureCookies.
 	SecureCookies bool `json:"secureCookies" gorm:"default:false"`
+	// DefaultCurrency is the install's default ISO 4217 currency (multicurrency, fork
+	// feature): what a receipt is stored in when neither the request nor its group names
+	// one, and the base currency of a group that sets none. An empty or unknown value
+	// resolves to USD (see repositories.ResolveInstallCurrency).
+	DefaultCurrency string `json:"defaultCurrency" gorm:"type:varchar(3);default:USD"`
 }

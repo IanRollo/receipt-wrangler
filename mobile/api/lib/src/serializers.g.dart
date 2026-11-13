@@ -31,6 +31,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(CheckEmailConnectivityCommand.serializer)
       ..add(CheckReceiptProcessingSettingsConnectivityCommand.serializer)
       ..add(Claim.serializer)
+      ..add(ClaimCurrencyTotal.serializer)
       ..add(ClaimLedgerEntry.serializer)
       ..add(ClaimList.serializer)
       ..add(ClaimListSummary.serializer)
@@ -39,6 +40,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ClaimReceiptsResult.serializer)
       ..add(Claims.serializer)
       ..add(Comment.serializer)
+      ..add(CurrencyInfo.serializer)
       ..add(CurrencySeparator.serializer)
       ..add(CurrencySymbolPosition.serializer)
       ..add(CustomField.serializer)
@@ -108,6 +110,7 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(ReceiptStatus.serializer)
       ..add(ReceiptSummary.serializer)
       ..add(ReceiptSummaryCommand.serializer)
+      ..add(ReceiptSummaryCurrencyTotal.serializer)
       ..add(ReceiptSummaryCustomFieldTotal.serializer)
       ..add(ReceiptSummaryPosition.serializer)
       ..add(ReceiptSummaryRow.serializer)
@@ -195,6 +198,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(Claim)]),
           () => ListBuilder<Claim>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ClaimCurrencyTotal)]),
+          () => ListBuilder<ClaimCurrencyTotal>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(CustomFieldOption)]),
           () => ListBuilder<CustomFieldOption>())
@@ -319,6 +325,14 @@ Serializers _$serializers = (Serializers().toBuilder()
           const FullType(BuiltList,
               const [const FullType(ReceiptSummaryCustomFieldTotal)]),
           () => ListBuilder<ReceiptSummaryCustomFieldTotal>())
+      ..addBuilderFactory(
+          const FullType(BuiltList,
+              const [const FullType(ReceiptSummaryCustomFieldTotal)]),
+          () => ListBuilder<ReceiptSummaryCustomFieldTotal>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(ReceiptSummaryCurrencyTotal)]),
+          () => ListBuilder<ReceiptSummaryCurrencyTotal>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ReceiptSummaryRow)]),
           () => ListBuilder<ReceiptSummaryRow>())
@@ -462,6 +476,9 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(ClaimLedgerEntry)]),
           () => ListBuilder<ClaimLedgerEntry>())
+      ..addBuilderFactory(
+          const FullType(BuiltList, const [const FullType(ClaimCurrencyTotal)]),
+          () => ListBuilder<ClaimCurrencyTotal>())
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(int)]),
           () => ListBuilder<int>())

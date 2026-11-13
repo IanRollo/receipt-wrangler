@@ -13,6 +13,7 @@ import 'package:openapi/src/api/api_key_api.dart';
 import 'package:openapi/src/api/auth_api.dart';
 import 'package:openapi/src/api/category_api.dart';
 import 'package:openapi/src/api/comment_api.dart';
+import 'package:openapi/src/api/currency_api.dart';
 import 'package:openapi/src/api/custom_field_api.dart';
 import 'package:openapi/src/api/dashboard_api.dart';
 import 'package:openapi/src/api/export_api.dart';
@@ -116,6 +117,12 @@ class Openapi {
   /// by doing that all interceptors will not be executed
   CommentApi getCommentApi() {
     return CommentApi(dio, serializers);
+  }
+
+  /// Get CurrencyApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CurrencyApi getCurrencyApi() {
+    return CurrencyApi(dio, serializers);
   }
 
   /// Get CustomFieldApi instance, base route and serializer can be overridden by a given but be careful,

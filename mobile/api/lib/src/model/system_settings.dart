@@ -44,16 +44,13 @@ part 'system_settings.g.dart';
 /// * [mcpRefreshTokenValidForHours] - The same for MCP/OAuth connector refresh tokens, kept separate so a long window chosen for human convenience does not extend third-party client tokens. 1-720 (30 days); 0 means unset and falls back to the default.
 /// * [tempFileRetentionHours] - How long a file in temp/ is kept once nothing can still act on it, i.e. how long a user has to rerun, preview or download the source image of a failed upload. 24-8760 (1 year); 0 means unset and falls back to the default.
 /// * [timeZone] - The app time zone, an IANA name such as America/New_York. Every calendar boundary (which day an Added At or Resolved Date falls on, \"today\", \"this month\", report periods) is worked out in it. A receipt's Date is a calendar day and never shifts with it.
+/// * [defaultCurrency] - The install's default ISO 4217 currency: what a receipt is stored in when neither the request nor its group names one. A plain string. Defaults to USD.
 /// * [secureCookies] - Marks every cookie the server sets as Secure, so browsers only send them over HTTPS. Recommended for any install served over HTTPS. Off by default, because a browser drops a Secure cookie set over plain HTTP, which breaks login.
 @BuiltValue()
 abstract class SystemSettings implements BaseModel, Built<SystemSettings, SystemSettingsBuilder> {
   /// Whether the OAuth 2.1-protected MCP server is enabled
   @BuiltValueField(wireName: r'mcpEnabled')
   bool? get mcpEnabled;
-
-  @BuiltValueField(wireName: r'currencyThousandthsSeparator')
-  CurrencySeparator? get currencyThousandthsSeparator;
-  // enum currencyThousandthsSeparatorEnum {  ,,  .,  };
 
   /// DPI used when rasterizing PDFs for OCR/vision processing
   @BuiltValueField(wireName: r'pdfDpi')
@@ -63,13 +60,45 @@ abstract class SystemSettings implements BaseModel, Built<SystemSettings, System
   @BuiltValueField(wireName: r'tempFileRetentionHours')
   int? get tempFileRetentionHours;
 
-  /// Marks every cookie the server sets as Secure, so browsers only send them over HTTPS. Recommended for any install served over HTTPS. Off by default, because a browser drops a Secure cookie set over plain HTTP, which breaks login.
-  @BuiltValueField(wireName: r'secureCookies')
-  bool? get secureCookies;
-
   /// Currency display
   @BuiltValueField(wireName: r'currencyDisplay')
   String? get currencyDisplay;
+
+  /// Whether to hide decimal places
+  @BuiltValueField(wireName: r'currencyHideDecimalPlaces')
+  bool? get currencyHideDecimalPlaces;
+
+  @BuiltValueField(wireName: r'currencyDecimalSeparator')
+  CurrencySeparator? get currencyDecimalSeparator;
+  // enum currencyDecimalSeparatorEnum {  ,,  .,  };
+
+  /// Server/API URL mobile clients connect to; encoded into the login QR's deep link
+  @BuiltValueField(wireName: r'mobileServerUrl')
+  String? get mobileServerUrl;
+
+  /// The install's default ISO 4217 currency: what a receipt is stored in when neither the request nor its group names one. A plain string. Defaults to USD.
+  @BuiltValueField(wireName: r'defaultCurrency')
+  String? get defaultCurrency;
+
+  /// Number of workers to use
+  @BuiltValueField(wireName: r'numWorkers')
+  int? get numWorkers;
+
+  /// Whether local sign up is enabled
+  @BuiltValueField(wireName: r'enableLocalSignUp')
+  bool? get enableLocalSignUp;
+
+  /// The same for MCP/OAuth connector refresh tokens, kept separate so a long window chosen for human convenience does not extend third-party client tokens. 1-720 (30 days); 0 means unset and falls back to the default.
+  @BuiltValueField(wireName: r'mcpRefreshTokenValidForHours')
+  int? get mcpRefreshTokenValidForHours;
+
+  @BuiltValueField(wireName: r'currencyThousandthsSeparator')
+  CurrencySeparator? get currencyThousandthsSeparator;
+  // enum currencyThousandthsSeparatorEnum {  ,,  .,  };
+
+  /// Marks every cookie the server sets as Secure, so browsers only send them over HTTPS. Recommended for any install served over HTTPS. Off by default, because a browser drops a Secure cookie set over plain HTTP, which breaks login.
+  @BuiltValueField(wireName: r'secureCookies')
+  bool? get secureCookies;
 
   /// Whether to show the mobile-setup QR code on the desktop login page
   @BuiltValueField(wireName: r'showLoginQr')
@@ -83,17 +112,9 @@ abstract class SystemSettings implements BaseModel, Built<SystemSettings, System
   @BuiltValueField(wireName: r'timeZone')
   String? get timeZone;
 
-  /// Whether to hide decimal places
-  @BuiltValueField(wireName: r'currencyHideDecimalPlaces')
-  bool? get currencyHideDecimalPlaces;
-
   /// Externally reachable origin used for MCP OAuth/metadata/redirect URLs and token audience
   @BuiltValueField(wireName: r'mcpPublicUrl')
   String? get mcpPublicUrl;
-
-  @BuiltValueField(wireName: r'currencyDecimalSeparator')
-  CurrencySeparator? get currencyDecimalSeparator;
-  // enum currencyDecimalSeparatorEnum {  ,,  .,  };
 
   /// Debug OCR
   @BuiltValueField(wireName: r'debugOcr')
@@ -106,10 +127,6 @@ abstract class SystemSettings implements BaseModel, Built<SystemSettings, System
   /// Receipt processing settings foreign key
   @BuiltValueField(wireName: r'receiptProcessingSettingsId')
   int? get receiptProcessingSettingsId;
-
-  /// Server/API URL mobile clients connect to; encoded into the login QR's deep link
-  @BuiltValueField(wireName: r'mobileServerUrl')
-  String? get mobileServerUrl;
 
   /// How long a refresh token stays valid, in hours. Refresh tokens rotate on every use, so this is how long a user can be away and still return signed in, not an absolute session cap. 1-720 (30 days); 0 means unset and falls back to the default.
   @BuiltValueField(wireName: r'refreshTokenValidForHours')
@@ -127,18 +144,6 @@ abstract class SystemSettings implements BaseModel, Built<SystemSettings, System
   @BuiltValueField(wireName: r'emailPollingInterval')
   int? get emailPollingInterval;
 
-  /// Number of workers to use
-  @BuiltValueField(wireName: r'numWorkers')
-  int? get numWorkers;
-
-  /// Whether local sign up is enabled
-  @BuiltValueField(wireName: r'enableLocalSignUp')
-  bool? get enableLocalSignUp;
-
-  /// The same for MCP/OAuth connector refresh tokens, kept separate so a long window chosen for human convenience does not extend third-party client tokens. 1-720 (30 days); 0 means unset and falls back to the default.
-  @BuiltValueField(wireName: r'mcpRefreshTokenValidForHours')
-  int? get mcpRefreshTokenValidForHours;
-
   @BuiltValueField(wireName: r'taskQueueConfigurations')
   BuiltList<TaskQueueConfiguration> get taskQueueConfigurations;
 
@@ -153,6 +158,7 @@ abstract class SystemSettings implements BaseModel, Built<SystemSettings, System
       ..tempFileRetentionHours = 720
       ..currencyDisplay = r'$'
       ..currencyHideDecimalPlaces = false
+      ..defaultCurrency = 'USD'
       ..numWorkers = 1
       ..enableLocalSignUp = false
       ..mcpRefreshTokenValidForHours = 24
@@ -234,6 +240,13 @@ class _$SystemSettingsSerializer implements PrimitiveSerializer<SystemSettings> 
       yield r'mobileServerUrl';
       yield serializers.serialize(
         object.mobileServerUrl,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.defaultCurrency != null) {
+      yield r'defaultCurrency';
+      yield serializers.serialize(
+        object.defaultCurrency,
         specifiedType: const FullType(String),
       );
     }
@@ -458,6 +471,13 @@ class _$SystemSettingsSerializer implements PrimitiveSerializer<SystemSettings> 
             specifiedType: const FullType(String),
           ) as String;
           result.mobileServerUrl = valueDes;
+          break;
+        case r'defaultCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.defaultCurrency = valueDes;
           break;
         case r'numWorkers':
           final valueDes = serializers.deserialize(

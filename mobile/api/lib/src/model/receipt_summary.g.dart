@@ -14,6 +14,8 @@ class _$ReceiptSummary extends ReceiptSummary {
   @override
   final ReceiptSummaryPosition position;
   @override
+  final String? baseCurrency;
+  @override
   final ReceiptSummaryRow overall;
   @override
   final BuiltList<ReceiptSummaryRow> statuses;
@@ -25,6 +27,7 @@ class _$ReceiptSummary extends ReceiptSummary {
       {required this.enabled,
       required this.configurationGroupId,
       required this.position,
+      this.baseCurrency,
       required this.overall,
       required this.statuses})
       : super._();
@@ -42,6 +45,7 @@ class _$ReceiptSummary extends ReceiptSummary {
         enabled == other.enabled &&
         configurationGroupId == other.configurationGroupId &&
         position == other.position &&
+        baseCurrency == other.baseCurrency &&
         overall == other.overall &&
         statuses == other.statuses;
   }
@@ -52,6 +56,7 @@ class _$ReceiptSummary extends ReceiptSummary {
     _$hash = $jc(_$hash, enabled.hashCode);
     _$hash = $jc(_$hash, configurationGroupId.hashCode);
     _$hash = $jc(_$hash, position.hashCode);
+    _$hash = $jc(_$hash, baseCurrency.hashCode);
     _$hash = $jc(_$hash, overall.hashCode);
     _$hash = $jc(_$hash, statuses.hashCode);
     _$hash = $jf(_$hash);
@@ -64,6 +69,7 @@ class _$ReceiptSummary extends ReceiptSummary {
           ..add('enabled', enabled)
           ..add('configurationGroupId', configurationGroupId)
           ..add('position', position)
+          ..add('baseCurrency', baseCurrency)
           ..add('overall', overall)
           ..add('statuses', statuses))
         .toString();
@@ -87,6 +93,10 @@ class ReceiptSummaryBuilder
   ReceiptSummaryPosition? get position => _$this._position;
   set position(ReceiptSummaryPosition? position) => _$this._position = position;
 
+  String? _baseCurrency;
+  String? get baseCurrency => _$this._baseCurrency;
+  set baseCurrency(String? baseCurrency) => _$this._baseCurrency = baseCurrency;
+
   ReceiptSummaryRowBuilder? _overall;
   ReceiptSummaryRowBuilder get overall =>
       _$this._overall ??= ReceiptSummaryRowBuilder();
@@ -108,6 +118,7 @@ class ReceiptSummaryBuilder
       _enabled = $v.enabled;
       _configurationGroupId = $v.configurationGroupId;
       _position = $v.position;
+      _baseCurrency = $v.baseCurrency;
       _overall = $v.overall.toBuilder();
       _statuses = $v.statuses.toBuilder();
       _$v = null;
@@ -141,6 +152,7 @@ class ReceiptSummaryBuilder
                 'configurationGroupId'),
             position: BuiltValueNullFieldError.checkNotNull(
                 position, r'ReceiptSummary', 'position'),
+            baseCurrency: baseCurrency,
             overall: overall.build(),
             statuses: statuses.build(),
           );

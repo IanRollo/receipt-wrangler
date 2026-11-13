@@ -20,6 +20,13 @@ part 'receipt.g.dart';
 ///
 /// Properties:
 /// * [amount] - Receipt total amount
+/// * [currency] - ISO 4217 currency code of the receipt's amount and of its items' amounts (items have no currency of their own). A plain string, never an enum. Never empty on a stored receipt.
+/// * [baseAmount] - What the receipt came to in its group's base currency (decimal string), as the user recorded or the server derived it. Only present when the currency differs from the base currency and a conversion was recorded.
+/// * [baseAmountCurrency] - Read-only, server-set. The ISO 4217 currency baseAmount is in: the group's base currency at the moment the conversion was written. A conversion counts as converted (claim figures, packet) only while this equals the group's current base currency; otherwise the receipt is treated as unconverted and the stored conversion is shown as recorded. Not to be confused with GroupReceiptSettings.baseCurrency.
+/// * [exchangeRate] - Base-currency units per one unit of the receipt's currency (decimal string). Only present alongside baseAmount.
+/// * [exchangeRateDate] - Calendar day (yyyy-MM-dd) the exchange rate applies to
+/// * [exchangeRateSource] - Free text saying where the rate came from, e.g. \"Card statement\"
+/// * [conversionNote] - Read-only warning, present when baseAmount and exchangeRate disagree about the amount by more than 1%. Never blocks a save.
 /// * [categories] - Categories associated to receipt
 /// * [comments] - Comments associated to receipt
 /// * [customFields] - Custom fields associated to receipt
@@ -47,6 +54,34 @@ abstract class Receipt implements Built<Receipt, ReceiptBuilder> {
   /// Receipt total amount
   @BuiltValueField(wireName: r'amount')
   String get amount;
+
+  /// ISO 4217 currency code of the receipt's amount and of its items' amounts (items have no currency of their own). A plain string, never an enum. Never empty on a stored receipt.
+  @BuiltValueField(wireName: r'currency')
+  String? get currency;
+
+  /// What the receipt came to in its group's base currency (decimal string), as the user recorded or the server derived it. Only present when the currency differs from the base currency and a conversion was recorded.
+  @BuiltValueField(wireName: r'baseAmount')
+  String? get baseAmount;
+
+  /// Read-only, server-set. The ISO 4217 currency baseAmount is in: the group's base currency at the moment the conversion was written. A conversion counts as converted (claim figures, packet) only while this equals the group's current base currency; otherwise the receipt is treated as unconverted and the stored conversion is shown as recorded. Not to be confused with GroupReceiptSettings.baseCurrency.
+  @BuiltValueField(wireName: r'baseAmountCurrency')
+  String? get baseAmountCurrency;
+
+  /// Base-currency units per one unit of the receipt's currency (decimal string). Only present alongside baseAmount.
+  @BuiltValueField(wireName: r'exchangeRate')
+  String? get exchangeRate;
+
+  /// Calendar day (yyyy-MM-dd) the exchange rate applies to
+  @BuiltValueField(wireName: r'exchangeRateDate')
+  String? get exchangeRateDate;
+
+  /// Free text saying where the rate came from, e.g. \"Card statement\"
+  @BuiltValueField(wireName: r'exchangeRateSource')
+  String? get exchangeRateSource;
+
+  /// Read-only warning, present when baseAmount and exchangeRate disagree about the amount by more than 1%. Never blocks a save.
+  @BuiltValueField(wireName: r'conversionNote')
+  String? get conversionNote;
 
   /// Categories associated to receipt
   @BuiltValueField(wireName: r'categories')
@@ -160,6 +195,55 @@ class _$ReceiptSerializer implements PrimitiveSerializer<Receipt> {
       object.amount,
       specifiedType: const FullType(String),
     );
+    if (object.currency != null) {
+      yield r'currency';
+      yield serializers.serialize(
+        object.currency,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.baseAmount != null) {
+      yield r'baseAmount';
+      yield serializers.serialize(
+        object.baseAmount,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.baseAmountCurrency != null) {
+      yield r'baseAmountCurrency';
+      yield serializers.serialize(
+        object.baseAmountCurrency,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRate != null) {
+      yield r'exchangeRate';
+      yield serializers.serialize(
+        object.exchangeRate,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRateDate != null) {
+      yield r'exchangeRateDate';
+      yield serializers.serialize(
+        object.exchangeRateDate,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRateSource != null) {
+      yield r'exchangeRateSource';
+      yield serializers.serialize(
+        object.exchangeRateSource,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.conversionNote != null) {
+      yield r'conversionNote';
+      yield serializers.serialize(
+        object.conversionNote,
+        specifiedType: const FullType(String),
+      );
+    }
     yield r'categories';
     yield serializers.serialize(
       object.categories,
@@ -321,6 +405,55 @@ class _$ReceiptSerializer implements PrimitiveSerializer<Receipt> {
             specifiedType: const FullType(String),
           ) as String;
           result.amount = valueDes;
+          break;
+        case r'currency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.currency = valueDes;
+          break;
+        case r'baseAmount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.baseAmount = valueDes;
+          break;
+        case r'baseAmountCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.baseAmountCurrency = valueDes;
+          break;
+        case r'exchangeRate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRate = valueDes;
+          break;
+        case r'exchangeRateDate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRateDate = valueDes;
+          break;
+        case r'exchangeRateSource':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRateSource = valueDes;
+          break;
+        case r'conversionNote':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.conversionNote = valueDes;
           break;
         case r'categories':
           final valueDes = serializers.deserialize(

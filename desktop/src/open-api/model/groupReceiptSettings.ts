@@ -50,6 +50,14 @@ export interface GroupReceiptSettings {
      */
     hideComments?: boolean;
     /**
+     * The group\'s stored default ISO 4217 currency; empty means \"the install default\".
+     */
+    defaultCurrency?: string;
+    /**
+     * The group\'s resolved default currency, never empty. It is also the group\'s base currency, the one its claims are reckoned in.
+     */
+    baseCurrency?: string;
+    /**
      * Hide share categories
      */
     hideShareCategories?: boolean;

@@ -63,6 +63,8 @@ func BuildRootRouter() *chi.Mux {
 
 	// Processing queue of quick scans and email uploads (fork feature)
 	rootRouter.Mount("/api/processingQueue", BuildProcessingQueueRouter())
+	// ISO 4217 currency table (multicurrency, fork feature)
+	rootRouter.Mount("/api/currency", BuildCurrencyRouter())
 
 	// Tag Router
 	tagRouter := BuildTagRouter()

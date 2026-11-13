@@ -54,6 +54,8 @@ class _$UpsertSystemSettingsCommand extends UpsertSystemSettingsCommand {
   @override
   final String? timeZone;
   @override
+  final String? defaultCurrency;
+  @override
   final bool? secureCookies;
 
   factory _$UpsertSystemSettingsCommand(
@@ -84,6 +86,7 @@ class _$UpsertSystemSettingsCommand extends UpsertSystemSettingsCommand {
       this.mcpRefreshTokenValidForHours,
       this.tempFileRetentionHours,
       this.timeZone,
+      this.defaultCurrency,
       this.secureCookies})
       : super._();
   @override
@@ -123,6 +126,7 @@ class _$UpsertSystemSettingsCommand extends UpsertSystemSettingsCommand {
         mcpRefreshTokenValidForHours == other.mcpRefreshTokenValidForHours &&
         tempFileRetentionHours == other.tempFileRetentionHours &&
         timeZone == other.timeZone &&
+        defaultCurrency == other.defaultCurrency &&
         secureCookies == other.secureCookies;
   }
 
@@ -152,6 +156,7 @@ class _$UpsertSystemSettingsCommand extends UpsertSystemSettingsCommand {
     _$hash = $jc(_$hash, mcpRefreshTokenValidForHours.hashCode);
     _$hash = $jc(_$hash, tempFileRetentionHours.hashCode);
     _$hash = $jc(_$hash, timeZone.hashCode);
+    _$hash = $jc(_$hash, defaultCurrency.hashCode);
     _$hash = $jc(_$hash, secureCookies.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
@@ -184,6 +189,7 @@ class _$UpsertSystemSettingsCommand extends UpsertSystemSettingsCommand {
           ..add('mcpRefreshTokenValidForHours', mcpRefreshTokenValidForHours)
           ..add('tempFileRetentionHours', tempFileRetentionHours)
           ..add('timeZone', timeZone)
+          ..add('defaultCurrency', defaultCurrency)
           ..add('secureCookies', secureCookies))
         .toString();
   }
@@ -313,6 +319,11 @@ class UpsertSystemSettingsCommandBuilder
   String? get timeZone => _$this._timeZone;
   set timeZone(String? timeZone) => _$this._timeZone = timeZone;
 
+  String? _defaultCurrency;
+  String? get defaultCurrency => _$this._defaultCurrency;
+  set defaultCurrency(String? defaultCurrency) =>
+      _$this._defaultCurrency = defaultCurrency;
+
   bool? _secureCookies;
   bool? get secureCookies => _$this._secureCookies;
   set secureCookies(bool? secureCookies) =>
@@ -349,6 +360,7 @@ class UpsertSystemSettingsCommandBuilder
       _mcpRefreshTokenValidForHours = $v.mcpRefreshTokenValidForHours;
       _tempFileRetentionHours = $v.tempFileRetentionHours;
       _timeZone = $v.timeZone;
+      _defaultCurrency = $v.defaultCurrency;
       _secureCookies = $v.secureCookies;
       _$v = null;
     }
@@ -412,6 +424,7 @@ class UpsertSystemSettingsCommandBuilder
             mcpRefreshTokenValidForHours: mcpRefreshTokenValidForHours,
             tempFileRetentionHours: tempFileRetentionHours,
             timeZone: timeZone,
+            defaultCurrency: defaultCurrency,
             secureCookies: secureCookies,
           );
     } catch (_) {

@@ -20,6 +20,8 @@ Name | Type | Description | Notes
 **hideItemCategories** | **bool** | Hide receipt item categories | [optional] 
 **hideItemTags** | **bool** | Hide receipt item tags | [optional] 
 **hideComments** | **bool** | Hide receipt comments | [optional] 
+**defaultCurrency** | **String** | The group's stored default ISO 4217 currency; empty means \"the install default\". | [optional] 
+**baseCurrency** | **String** | The group's resolved default currency, never empty. It is also the group's base currency, the one its claims are reckoned in. | [optional] 
 **hideShareCategories** | **bool** | Hide share categories | [optional] 
 **hideShareTags** | **bool** | Hide share tags | [optional] 
 **quickScanPaidByEnabled** | **bool** | Show the paid by field in quick scan | [optional] 

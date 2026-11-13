@@ -20,6 +20,11 @@ part 'upsert_receipt_command.g.dart';
 /// Properties:
 /// * [name] - Receipt name
 /// * [amount] - Receipt total amount
+/// * [currency] - ISO 4217 currency code. Empty or absent means the group's default currency on a create and the receipt's stored currency on an update. An unknown code is a 400 under the currency key. Amounts with more decimal places than the currency allows are a 400 under the amount key (JPY whole, USD 2, JOD 3).
+/// * [baseAmount] - What the receipt came to in the group's base currency. Optional; the server derives it from exchangeRate when only that is given. Ignored (cleared) when currency equals the base currency. On an update, omitting all four conversion keys keeps the stored conversion; sending any of them replaces the whole conversion.
+/// * [exchangeRate] - Base-currency units per one unit of currency. Optional; derived from baseAmount (6 decimal places) when only that is given. Send null or omit it, never \"\".
+/// * [exchangeRateDate] - Calendar day (yyyy-MM-dd) the rate applies to. Optional.
+/// * [exchangeRateSource] - Free text, at most 255 characters. Optional.
 /// * [date] - Receipt date
 /// * [groupId] - Group foreign key
 /// * [paidByUserId] - User paid foreign key
@@ -38,6 +43,26 @@ abstract class UpsertReceiptCommand implements Built<UpsertReceiptCommand, Upser
   /// Receipt total amount
   @BuiltValueField(wireName: r'amount')
   String get amount;
+
+  /// ISO 4217 currency code. Empty or absent means the group's default currency on a create and the receipt's stored currency on an update. An unknown code is a 400 under the currency key. Amounts with more decimal places than the currency allows are a 400 under the amount key (JPY whole, USD 2, JOD 3).
+  @BuiltValueField(wireName: r'currency')
+  String? get currency;
+
+  /// What the receipt came to in the group's base currency. Optional; the server derives it from exchangeRate when only that is given. Ignored (cleared) when currency equals the base currency. On an update, omitting all four conversion keys keeps the stored conversion; sending any of them replaces the whole conversion.
+  @BuiltValueField(wireName: r'baseAmount')
+  String? get baseAmount;
+
+  /// Base-currency units per one unit of currency. Optional; derived from baseAmount (6 decimal places) when only that is given. Send null or omit it, never \"\".
+  @BuiltValueField(wireName: r'exchangeRate')
+  String? get exchangeRate;
+
+  /// Calendar day (yyyy-MM-dd) the rate applies to. Optional.
+  @BuiltValueField(wireName: r'exchangeRateDate')
+  String? get exchangeRateDate;
+
+  /// Free text, at most 255 characters. Optional.
+  @BuiltValueField(wireName: r'exchangeRateSource')
+  String? get exchangeRateSource;
 
   /// Receipt date
   @BuiltValueField(wireName: r'date')
@@ -108,6 +133,41 @@ class _$UpsertReceiptCommandSerializer implements PrimitiveSerializer<UpsertRece
       object.amount,
       specifiedType: const FullType(String),
     );
+    if (object.currency != null) {
+      yield r'currency';
+      yield serializers.serialize(
+        object.currency,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.baseAmount != null) {
+      yield r'baseAmount';
+      yield serializers.serialize(
+        object.baseAmount,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRate != null) {
+      yield r'exchangeRate';
+      yield serializers.serialize(
+        object.exchangeRate,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRateDate != null) {
+      yield r'exchangeRateDate';
+      yield serializers.serialize(
+        object.exchangeRateDate,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.exchangeRateSource != null) {
+      yield r'exchangeRateSource';
+      yield serializers.serialize(
+        object.exchangeRateSource,
+        specifiedType: const FullType(String),
+      );
+    }
     yield r'date';
     yield serializers.serialize(
       object.date,
@@ -199,6 +259,41 @@ class _$UpsertReceiptCommandSerializer implements PrimitiveSerializer<UpsertRece
             specifiedType: const FullType(String),
           ) as String;
           result.amount = valueDes;
+          break;
+        case r'currency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.currency = valueDes;
+          break;
+        case r'baseAmount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.baseAmount = valueDes;
+          break;
+        case r'exchangeRate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRate = valueDes;
+          break;
+        case r'exchangeRateDate':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRateDate = valueDes;
+          break;
+        case r'exchangeRateSource':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.exchangeRateSource = valueDes;
           break;
         case r'date':
           final valueDes = serializers.deserialize(

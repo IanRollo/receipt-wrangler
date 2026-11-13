@@ -28,6 +28,8 @@ part 'group_receipt_settings.g.dart';
 /// * [hideItemCategories] - Hide receipt item categories
 /// * [hideItemTags] - Hide receipt item tags
 /// * [hideComments] - Hide receipt comments
+/// * [defaultCurrency] - The group's stored default ISO 4217 currency; empty means \"the install default\".
+/// * [baseCurrency] - The group's resolved default currency, never empty. It is also the group's base currency, the one its claims are reckoned in.
 /// * [hideShareCategories] - Hide share categories
 /// * [hideShareTags] - Hide share tags
 /// * [quickScanPaidByEnabled] - Show the paid by field in quick scan
@@ -67,6 +69,10 @@ abstract class GroupReceiptSettings implements BaseModel, Built<GroupReceiptSett
   @BuiltValueField(wireName: r'hideComments')
   bool? get hideComments;
 
+  /// The group's resolved default currency, never empty. It is also the group's base currency, the one its claims are reckoned in.
+  @BuiltValueField(wireName: r'baseCurrency')
+  String? get baseCurrency;
+
   /// Also attach the group's default custom fields to receipts the SERVER creates (quick scan, email integration). Off by default.
   @BuiltValueField(wireName: r'applyDefaultCustomFieldsOnIngest')
   bool? get applyDefaultCustomFieldsOnIngest;
@@ -86,6 +92,10 @@ abstract class GroupReceiptSettings implements BaseModel, Built<GroupReceiptSett
   @BuiltValueField(wireName: r'receiptSummaryPosition')
   ReceiptSummaryPosition? get receiptSummaryPosition;
   // enum receiptSummaryPositionEnum {  TOP,  BOTTOM,  };
+
+  /// The group's stored default ISO 4217 currency; empty means \"the install default\".
+  @BuiltValueField(wireName: r'defaultCurrency')
+  String? get defaultCurrency;
 
   /// Hide receipt item categories
   @BuiltValueField(wireName: r'hideItemCategories')
@@ -215,6 +225,13 @@ class _$GroupReceiptSettingsSerializer implements PrimitiveSerializer<GroupRecei
         specifiedType: const FullType(bool),
       );
     }
+    if (object.baseCurrency != null) {
+      yield r'baseCurrency';
+      yield serializers.serialize(
+        object.baseCurrency,
+        specifiedType: const FullType(String),
+      );
+    }
     if (object.applyDefaultCustomFieldsOnIngest != null) {
       yield r'applyDefaultCustomFieldsOnIngest';
       yield serializers.serialize(
@@ -253,6 +270,13 @@ class _$GroupReceiptSettingsSerializer implements PrimitiveSerializer<GroupRecei
       yield serializers.serialize(
         object.receiptSummaryPosition,
         specifiedType: const FullType(ReceiptSummaryPosition),
+      );
+    }
+    if (object.defaultCurrency != null) {
+      yield r'defaultCurrency';
+      yield serializers.serialize(
+        object.defaultCurrency,
+        specifiedType: const FullType(String),
       );
     }
     if (object.hideItemCategories != null) {
@@ -465,6 +489,13 @@ class _$GroupReceiptSettingsSerializer implements PrimitiveSerializer<GroupRecei
           ) as bool;
           result.hideComments = valueDes;
           break;
+        case r'baseCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.baseCurrency = valueDes;
+          break;
         case r'applyDefaultCustomFieldsOnIngest':
           final valueDes = serializers.deserialize(
             value,
@@ -506,6 +537,13 @@ class _$GroupReceiptSettingsSerializer implements PrimitiveSerializer<GroupRecei
             specifiedType: const FullType(ReceiptSummaryPosition),
           ) as ReceiptSummaryPosition;
           result.receiptSummaryPosition = valueDes;
+          break;
+        case r'defaultCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.defaultCurrency = valueDes;
           break;
         case r'hideItemCategories':
           final valueDes = serializers.deserialize(

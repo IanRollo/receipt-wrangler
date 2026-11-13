@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:openapi/src/model/claim_currency_total.dart';
 import 'package:openapi/src/model/claim_ledger_entry.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
@@ -37,6 +38,9 @@ part 'claim.g.dart';
 /// * [outstandingAmount] - effectiveClaimedAmount minus paidAmount. Negative when more was received than claimed.
 /// * [daysWaiting] - Calendar days from submittedDate to today in the app time zone, when awaitingSettlement is true and submittedDate is set; otherwise absent. Never negative.
 /// * [ledgerEntries] - The claim's ledger, oldest first (by date, then id). Always present; empty when none.
+/// * [currency] - The claim's currency: its group's base currency, which every money figure of the claim is reckoned in. A linked receipt counts at its amount when it is in that currency, at its recorded baseAmount when converted, and otherwise is unconverted (counted in unconvertedReceiptCount, left out of every figure).
+/// * [unconvertedReceiptCount] - Number of linked receipts the caller may see that are unconverted
+/// * [unconvertedTotals] - The unconverted receipts' amounts per currency, by code. Always present; empty when every linked receipt counts.
 @BuiltValue()
 abstract class Claim implements Built<Claim, ClaimBuilder> {
   @BuiltValueField(wireName: r'id')
@@ -132,6 +136,18 @@ abstract class Claim implements Built<Claim, ClaimBuilder> {
   /// The claim's ledger, oldest first (by date, then id). Always present; empty when none.
   @BuiltValueField(wireName: r'ledgerEntries')
   BuiltList<ClaimLedgerEntry> get ledgerEntries;
+
+  /// The claim's currency: its group's base currency, which every money figure of the claim is reckoned in. A linked receipt counts at its amount when it is in that currency, at its recorded baseAmount when converted, and otherwise is unconverted (counted in unconvertedReceiptCount, left out of every figure).
+  @BuiltValueField(wireName: r'currency')
+  String? get currency;
+
+  /// Number of linked receipts the caller may see that are unconverted
+  @BuiltValueField(wireName: r'unconvertedReceiptCount')
+  int? get unconvertedReceiptCount;
+
+  /// The unconverted receipts' amounts per currency, by code. Always present; empty when every linked receipt counts.
+  @BuiltValueField(wireName: r'unconvertedTotals')
+  BuiltList<ClaimCurrencyTotal>? get unconvertedTotals;
 
   Claim._();
 
@@ -292,6 +308,27 @@ class _$ClaimSerializer implements PrimitiveSerializer<Claim> {
       object.ledgerEntries,
       specifiedType: const FullType(BuiltList, [FullType(ClaimLedgerEntry)]),
     );
+    if (object.currency != null) {
+      yield r'currency';
+      yield serializers.serialize(
+        object.currency,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.unconvertedReceiptCount != null) {
+      yield r'unconvertedReceiptCount';
+      yield serializers.serialize(
+        object.unconvertedReceiptCount,
+        specifiedType: const FullType(int),
+      );
+    }
+    if (object.unconvertedTotals != null) {
+      yield r'unconvertedTotals';
+      yield serializers.serialize(
+        object.unconvertedTotals,
+        specifiedType: const FullType(BuiltList, [FullType(ClaimCurrencyTotal)]),
+      );
+    }
   }
 
   @override
@@ -482,6 +519,27 @@ class _$ClaimSerializer implements PrimitiveSerializer<Claim> {
             specifiedType: const FullType(BuiltList, [FullType(ClaimLedgerEntry)]),
           ) as BuiltList<ClaimLedgerEntry>;
           result.ledgerEntries.replace(valueDes);
+          break;
+        case r'currency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.currency = valueDes;
+          break;
+        case r'unconvertedReceiptCount':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(int),
+          ) as int;
+          result.unconvertedReceiptCount = valueDes;
+          break;
+        case r'unconvertedTotals':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ClaimCurrencyTotal)]),
+          ) as BuiltList<ClaimCurrencyTotal>;
+          result.unconvertedTotals.replace(valueDes);
           break;
         default:
           unhandled.add(key);

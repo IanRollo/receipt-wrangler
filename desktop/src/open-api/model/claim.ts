@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 import { ClaimLedgerEntry } from './claimLedgerEntry';
+import { ClaimCurrencyTotal } from './claimCurrencyTotal';
 
 
 /**
@@ -104,5 +105,17 @@ export interface Claim {
      * The claim\'s ledger, oldest first (by date, then id). Always present; empty when none.
      */
     ledgerEntries: Array<ClaimLedgerEntry>;
+    /**
+     * The claim\'s currency: its group\'s base currency, which every money figure of the claim is reckoned in. A linked receipt counts at its amount when it is in that currency, at its recorded baseAmount when converted, and otherwise is unconverted (counted in unconvertedReceiptCount, left out of every figure).
+     */
+    currency?: string;
+    /**
+     * Number of linked receipts the caller may see that are unconverted
+     */
+    unconvertedReceiptCount?: number;
+    /**
+     * The unconverted receipts\' amounts per currency, by code. Always present; empty when every linked receipt counts.
+     */
+    unconvertedTotals?: Array<ClaimCurrencyTotal>;
 }
 

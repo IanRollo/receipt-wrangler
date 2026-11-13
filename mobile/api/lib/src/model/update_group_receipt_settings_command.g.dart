@@ -21,6 +21,8 @@ class _$UpdateGroupReceiptSettingsCommand
   @override
   final bool? hideComments;
   @override
+  final String? defaultCurrency;
+  @override
   final bool? hideShareCategories;
   @override
   final bool? hideShareTags;
@@ -74,6 +76,7 @@ class _$UpdateGroupReceiptSettingsCommand
       this.hideItemCategories,
       this.hideItemTags,
       this.hideComments,
+      this.defaultCurrency,
       this.hideShareCategories,
       this.hideShareTags,
       this.quickScanPaidByEnabled,
@@ -115,6 +118,7 @@ class _$UpdateGroupReceiptSettingsCommand
         hideItemCategories == other.hideItemCategories &&
         hideItemTags == other.hideItemTags &&
         hideComments == other.hideComments &&
+        defaultCurrency == other.defaultCurrency &&
         hideShareCategories == other.hideShareCategories &&
         hideShareTags == other.hideShareTags &&
         quickScanPaidByEnabled == other.quickScanPaidByEnabled &&
@@ -148,6 +152,7 @@ class _$UpdateGroupReceiptSettingsCommand
     _$hash = $jc(_$hash, hideItemCategories.hashCode);
     _$hash = $jc(_$hash, hideItemTags.hashCode);
     _$hash = $jc(_$hash, hideComments.hashCode);
+    _$hash = $jc(_$hash, defaultCurrency.hashCode);
     _$hash = $jc(_$hash, hideShareCategories.hashCode);
     _$hash = $jc(_$hash, hideShareTags.hashCode);
     _$hash = $jc(_$hash, quickScanPaidByEnabled.hashCode);
@@ -182,6 +187,7 @@ class _$UpdateGroupReceiptSettingsCommand
           ..add('hideItemCategories', hideItemCategories)
           ..add('hideItemTags', hideItemTags)
           ..add('hideComments', hideComments)
+          ..add('defaultCurrency', defaultCurrency)
           ..add('hideShareCategories', hideShareCategories)
           ..add('hideShareTags', hideShareTags)
           ..add('quickScanPaidByEnabled', quickScanPaidByEnabled)
@@ -240,6 +246,11 @@ class UpdateGroupReceiptSettingsCommandBuilder
   bool? _hideComments;
   bool? get hideComments => _$this._hideComments;
   set hideComments(bool? hideComments) => _$this._hideComments = hideComments;
+
+  String? _defaultCurrency;
+  String? get defaultCurrency => _$this._defaultCurrency;
+  set defaultCurrency(String? defaultCurrency) =>
+      _$this._defaultCurrency = defaultCurrency;
 
   bool? _hideShareCategories;
   bool? get hideShareCategories => _$this._hideShareCategories;
@@ -370,6 +381,7 @@ class UpdateGroupReceiptSettingsCommandBuilder
       _hideItemCategories = $v.hideItemCategories;
       _hideItemTags = $v.hideItemTags;
       _hideComments = $v.hideComments;
+      _defaultCurrency = $v.defaultCurrency;
       _hideShareCategories = $v.hideShareCategories;
       _hideShareTags = $v.hideShareTags;
       _quickScanPaidByEnabled = $v.quickScanPaidByEnabled;
@@ -422,6 +434,7 @@ class UpdateGroupReceiptSettingsCommandBuilder
             hideItemCategories: hideItemCategories,
             hideItemTags: hideItemTags,
             hideComments: hideComments,
+            defaultCurrency: defaultCurrency,
             hideShareCategories: hideShareCategories,
             hideShareTags: hideShareTags,
             quickScanPaidByEnabled: quickScanPaidByEnabled,

@@ -3,6 +3,7 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:openapi/src/model/receipt_summary_currency_total.dart';
 import 'package:openapi/src/model/receipt_status.dart';
 import 'package:built_collection/built_collection.dart';
 import 'package:openapi/src/model/receipt_summary_custom_field_total.dart';
@@ -18,6 +19,7 @@ part 'receipt_summary_row.g.dart';
 /// * [receiptCount] - How many receipts this row covers. On the overall row this matches the table's own total count for the same filter.
 /// * [total] - Sum of the receipts' amounts
 /// * [customFieldTotals] - One entry per configured currency custom field, in the configured order. Always present; empty when the group totals only the receipt amount.
+/// * [currencyTotals] - The same figures once per currency present in the row (base currency first, then by code), because amounts in different currencies are never added. total and customFieldTotals above cover only receipts in the summary's baseCurrency; receiptCount still counts every receipt. Always present; empty when the row covers no receipt.
 @BuiltValue()
 abstract class ReceiptSummaryRow implements Built<ReceiptSummaryRow, ReceiptSummaryRowBuilder> {
   @BuiltValueField(wireName: r'status')
@@ -35,6 +37,10 @@ abstract class ReceiptSummaryRow implements Built<ReceiptSummaryRow, ReceiptSumm
   /// One entry per configured currency custom field, in the configured order. Always present; empty when the group totals only the receipt amount.
   @BuiltValueField(wireName: r'customFieldTotals')
   BuiltList<ReceiptSummaryCustomFieldTotal> get customFieldTotals;
+
+  /// The same figures once per currency present in the row (base currency first, then by code), because amounts in different currencies are never added. total and customFieldTotals above cover only receipts in the summary's baseCurrency; receiptCount still counts every receipt. Always present; empty when the row covers no receipt.
+  @BuiltValueField(wireName: r'currencyTotals')
+  BuiltList<ReceiptSummaryCurrencyTotal>? get currencyTotals;
 
   ReceiptSummaryRow._();
 
@@ -79,6 +85,13 @@ class _$ReceiptSummaryRowSerializer implements PrimitiveSerializer<ReceiptSummar
       object.customFieldTotals,
       specifiedType: const FullType(BuiltList, [FullType(ReceiptSummaryCustomFieldTotal)]),
     );
+    if (object.currencyTotals != null) {
+      yield r'currencyTotals';
+      yield serializers.serialize(
+        object.currencyTotals,
+        specifiedType: const FullType(BuiltList, [FullType(ReceiptSummaryCurrencyTotal)]),
+      );
+    }
   }
 
   @override
@@ -129,6 +142,13 @@ class _$ReceiptSummaryRowSerializer implements PrimitiveSerializer<ReceiptSummar
             specifiedType: const FullType(BuiltList, [FullType(ReceiptSummaryCustomFieldTotal)]),
           ) as BuiltList<ReceiptSummaryCustomFieldTotal>;
           result.customFieldTotals.replace(valueDes);
+          break;
+        case r'currencyTotals':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ReceiptSummaryCurrencyTotal)]),
+          ) as BuiltList<ReceiptSummaryCurrencyTotal>;
+          result.currencyTotals.replace(valueDes);
           break;
         default:
           unhandled.add(key);

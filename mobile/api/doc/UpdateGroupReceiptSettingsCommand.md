@@ -14,6 +14,7 @@ Name | Type | Description | Notes
 **hideItemCategories** | **bool** | Hide receipt item categories | [optional] 
 **hideItemTags** | **bool** | Hide receipt item tags | [optional] 
 **hideComments** | **bool** | Hide receipt comments | [optional] 
+**defaultCurrency** | **String** | The group's default (and base) ISO 4217 currency; \"\" clears it back to the install default, an unknown code is a 400. Omit the key to leave the stored value unchanged. | [optional] 
 **hideShareCategories** | **bool** | Hide share categories | [optional] 
 **hideShareTags** | **bool** | Hide share tags | [optional] 
 **quickScanPaidByEnabled** | **bool** | Show the paid by field in quick scan | [optional] 

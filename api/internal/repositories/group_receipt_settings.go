@@ -4,6 +4,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"receipt-wrangler/api/internal/commands"
+	"receipt-wrangler/api/internal/currency"
 	"receipt-wrangler/api/internal/models"
 )
 
@@ -32,6 +33,7 @@ func (repository GroupReceiptSettingsRepository) CreateGroupReceiptSettings(grou
 	}
 
 	emptySettingsProjections(&groupReceiptSettingsToCreate)
+	groupReceiptSettingsToCreate.BaseCurrency = ResolveGroupCurrency(groupReceiptSettingsToCreate.DefaultCurrency, InstallDefaultCurrency(db))
 
 	return groupReceiptSettingsToCreate, nil
 }
@@ -136,7 +138,9 @@ func (repository GroupReceiptSettingsRepository) LoadSettingsProjections(setting
 	// EnumClass throws and fails the whole payload. This loop is the one chokepoint every
 	// GroupReceiptSettings read passes through — AppData, GetPagedGroups, CreateGroup,
 	// GetGroupById — so normalizing here is what guarantees "" never reaches a client.
+	installDefaultCurrency := InstallDefaultCurrency(db)
 	for _, setting := range settings {
+		setting.BaseCurrency = ResolveGroupCurrency(setting.DefaultCurrency, installDefaultCurrency)
 		setting.DefaultCustomFieldIds = sliceOrEmpty(defaultCustomFieldIds[setting.GroupId])
 		setting.ReceiptSummaryCustomFieldIds = sliceOrEmpty(summaryCustomFieldIds[setting.GroupId])
 		setting.ReceiptSummaryStatuses = sliceOrEmpty(canonicalStatusOrder(summaryStatuses[setting.GroupId]))
@@ -286,6 +290,11 @@ func (repository GroupReceiptSettingsRepository) UpdateGroupReceiptSettings(
 			groupReceiptSettings.ApplyDefaultCustomFieldsOnIngest = *command.ApplyDefaultCustomFieldsOnIngest
 		} else {
 			omittedColumns = append(omittedColumns, "ApplyDefaultCustomFieldsOnIngest")
+		}
+		if command.DefaultCurrency != nil {
+			groupReceiptSettings.DefaultCurrency = currency.Normalize(*command.DefaultCurrency)
+		} else {
+			omittedColumns = append(omittedColumns, "DefaultCurrency")
 		}
 		if command.ReceiptSummaryEnabled != nil {
 			groupReceiptSettings.ReceiptSummaryEnabled = *command.ReceiptSummaryEnabled

@@ -48,6 +48,13 @@ func (service *ReceiptCsvService) BuildReceiptCsv(receipts []models.Receipt) (st
 		"Categories",
 		"Tags",
 		"Resolved Date",
+		// Multicurrency (fork feature). Before the packet-only Images column, so that stays last.
+		"Currency",
+		"Base Amount",
+		"Base Currency",
+		"Exchange Rate",
+		"Rate Date",
+		"Rate Source",
 	}
 	if service.ImageNames != nil {
 		headers = append(headers, "Images")
@@ -66,6 +73,8 @@ func (service *ReceiptCsvService) BuildReceiptCsv(receipts []models.Receipt) (st
 		}
 
 		for _, item := range receipt.ReceiptItems {
+			// Items have no currency of their own; items.csv names the receipt's.
+			item.Receipt.Currency = receipt.Currency
 			items = append(items, item)
 		}
 		newRow := []string{
@@ -79,6 +88,12 @@ func (service *ReceiptCsvService) BuildReceiptCsv(receipts []models.Receipt) (st
 			render.SanitizeCSVField(service.BuildCategoryString(receipt.Categories)),
 			render.SanitizeCSVField(service.BuildTagString(receipt.Tags)),
 			resolvedDateString,
+			receipt.Currency,
+			optionalDecimalString(receipt.BaseAmount),
+			receipt.BaseAmountCurrency,
+			optionalDecimalString(receipt.ExchangeRate),
+			optionalDayString(receipt.ExchangeRateDate),
+			render.SanitizeCSVField(receipt.ExchangeRateSource),
 		}
 		if service.ImageNames != nil {
 			newRow = append(newRow, render.SanitizeCSVField(strings.Join(service.ImageNames[receipt.ID], ",")))
@@ -112,6 +127,7 @@ func (service *ReceiptCsvService) BuildItemCsv(items []models.Item) ([]byte, err
 		"Status",
 		"Categories",
 		"Tags",
+		"Currency",
 	}
 	rowData := make([][]string, 0, len(items))
 	dateFormat := "2006-01-02"
@@ -128,6 +144,7 @@ func (service *ReceiptCsvService) BuildItemCsv(items []models.Item) ([]byte, err
 			string(item.Status),
 			render.SanitizeCSVField(service.BuildCategoryString(item.Categories)),
 			render.SanitizeCSVField(service.BuildTagString(item.Tags)),
+			item.Receipt.Currency,
 		}
 		rowData = append(rowData, newRow)
 	}

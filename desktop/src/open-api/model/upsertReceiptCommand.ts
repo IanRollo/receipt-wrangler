@@ -25,6 +25,26 @@ export interface UpsertReceiptCommand {
      */
     amount: string;
     /**
+     * ISO 4217 currency code. Empty or absent means the group\'s default currency on a create and the receipt\'s stored currency on an update. An unknown code is a 400 under the currency key. Amounts with more decimal places than the currency allows are a 400 under the amount key (JPY whole, USD 2, JOD 3).
+     */
+    currency?: string;
+    /**
+     * What the receipt came to in the group\'s base currency. Optional; the server derives it from exchangeRate when only that is given. Ignored (cleared) when currency equals the base currency. On an update, omitting all four conversion keys keeps the stored conversion; sending any of them replaces the whole conversion.
+     */
+    baseAmount?: string;
+    /**
+     * Base-currency units per one unit of currency. Optional; derived from baseAmount (6 decimal places) when only that is given. Send null or omit it, never \"\".
+     */
+    exchangeRate?: string;
+    /**
+     * Calendar day (yyyy-MM-dd) the rate applies to. Optional.
+     */
+    exchangeRateDate?: string;
+    /**
+     * Free text, at most 255 characters. Optional.
+     */
+    exchangeRateSource?: string;
+    /**
      * Receipt date
      */
     date: string;

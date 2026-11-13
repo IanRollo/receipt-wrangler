@@ -81,6 +81,7 @@ Class | Method | HTTP request | Description
 [*CategoryApi*](doc/CategoryApi.md) | [**updateCategory**](doc/CategoryApi.md#updatecategory) | **PUT** /category/{categoryId} | Update category
 [*CommentApi*](doc/CommentApi.md) | [**addComment**](doc/CommentApi.md#addcomment) | **POST** /comment/ | Add comment
 [*CommentApi*](doc/CommentApi.md) | [**deleteComment**](doc/CommentApi.md#deletecomment) | **DELETE** /comment/{commentId} | Delete comment
+[*CurrencyApi*](doc/CurrencyApi.md) | [**getCurrencies**](doc/CurrencyApi.md#getcurrencies) | **GET** /currency | Get the currency table
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**createCustomField**](doc/CustomFieldApi.md#createcustomfield) | **POST** /customField/ | Create custom field
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**deleteCustomField**](doc/CustomFieldApi.md#deletecustomfield) | **DELETE** /customField/{customFieldId} | Delete custom field
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**getCustomFieldById**](doc/CustomFieldApi.md#getcustomfieldbyid) | **GET** /customField/{customFieldId} | Get custom field
@@ -251,6 +252,7 @@ Class | Method | HTTP request | Description
  - [CheckEmailConnectivityCommand](doc/CheckEmailConnectivityCommand.md)
  - [CheckReceiptProcessingSettingsConnectivityCommand](doc/CheckReceiptProcessingSettingsConnectivityCommand.md)
  - [Claim](doc/Claim.md)
+ - [ClaimCurrencyTotal](doc/ClaimCurrencyTotal.md)
  - [ClaimLedgerEntry](doc/ClaimLedgerEntry.md)
  - [ClaimList](doc/ClaimList.md)
  - [ClaimListSummary](doc/ClaimListSummary.md)
@@ -259,6 +261,7 @@ Class | Method | HTTP request | Description
  - [ClaimReceiptsResult](doc/ClaimReceiptsResult.md)
  - [Claims](doc/Claims.md)
  - [Comment](doc/Comment.md)
+ - [CurrencyInfo](doc/CurrencyInfo.md)
  - [CurrencySeparator](doc/CurrencySeparator.md)
  - [CurrencySymbolPosition](doc/CurrencySymbolPosition.md)
  - [CustomField](doc/CustomField.md)
@@ -329,6 +332,7 @@ Class | Method | HTTP request | Description
  - [ReceiptStatus](doc/ReceiptStatus.md)
  - [ReceiptSummary](doc/ReceiptSummary.md)
  - [ReceiptSummaryCommand](doc/ReceiptSummaryCommand.md)
+ - [ReceiptSummaryCurrencyTotal](doc/ReceiptSummaryCurrencyTotal.md)
  - [ReceiptSummaryCustomFieldTotal](doc/ReceiptSummaryCustomFieldTotal.md)
  - [ReceiptSummaryPosition](doc/ReceiptSummaryPosition.md)
  - [ReceiptSummaryRow](doc/ReceiptSummaryRow.md)

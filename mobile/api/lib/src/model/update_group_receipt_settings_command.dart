@@ -21,6 +21,7 @@ part 'update_group_receipt_settings_command.g.dart';
 /// * [hideItemCategories] - Hide receipt item categories
 /// * [hideItemTags] - Hide receipt item tags
 /// * [hideComments] - Hide receipt comments
+/// * [defaultCurrency] - The group's default (and base) ISO 4217 currency; \"\" clears it back to the install default, an unknown code is a 400. Omit the key to leave the stored value unchanged.
 /// * [hideShareCategories] - Hide share categories
 /// * [hideShareTags] - Hide share tags
 /// * [quickScanPaidByEnabled] - Show the paid by field in quick scan
@@ -67,6 +68,10 @@ abstract class UpdateGroupReceiptSettingsCommand implements Built<UpdateGroupRec
   /// Hide receipt comments
   @BuiltValueField(wireName: r'hideComments')
   bool? get hideComments;
+
+  /// The group's default (and base) ISO 4217 currency; \"\" clears it back to the install default, an unknown code is a 400. Omit the key to leave the stored value unchanged.
+  @BuiltValueField(wireName: r'defaultCurrency')
+  String? get defaultCurrency;
 
   /// Hide share categories
   @BuiltValueField(wireName: r'hideShareCategories')
@@ -216,6 +221,13 @@ class _$UpdateGroupReceiptSettingsCommandSerializer implements PrimitiveSerializ
       yield serializers.serialize(
         object.hideComments,
         specifiedType: const FullType(bool),
+      );
+    }
+    if (object.defaultCurrency != null) {
+      yield r'defaultCurrency';
+      yield serializers.serialize(
+        object.defaultCurrency,
+        specifiedType: const FullType(String),
       );
     }
     if (object.hideShareCategories != null) {
@@ -429,6 +441,13 @@ class _$UpdateGroupReceiptSettingsCommandSerializer implements PrimitiveSerializ
             specifiedType: const FullType(bool),
           ) as bool;
           result.hideComments = valueDes;
+          break;
+        case r'defaultCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.defaultCurrency = valueDes;
           break;
         case r'hideShareCategories':
           final valueDes = serializers.deserialize(
