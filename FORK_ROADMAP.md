@@ -15,6 +15,14 @@ Features this fork means to explore, and what has been built.
   carrying a SHA-256 for every file. This delivers items 1 and 2 below for claimed receipts; the
   plain receipt export is unchanged.
 
+- **Multicurrency, slice A** (branch `multicurrency`, 2026-11-12). Backend only so far: an explicit
+  ISO 4217 currency on every receipt (request, else group default, else install default), amounts
+  validated by the currency's exponent, a recorded conversion (base amount, rate, date, source) kept
+  as evidence, the Receipt Summary's legacy total restricted to the base currency with per-currency
+  totals beside it, claims reckoned in the group's base currency with unconverted receipts set
+  aside, and the claim packet and CSV showing all of it. See item 4 and `api/CLAUDE.md` →
+  "Multicurrency (fork feature)".
+
 **Why this fork exists:** a personal record of payments that can be handed over as proof,
 exact transactions with their receipt images, independent of the system of whoever is disputing
 them. Features are judged by how well they produce that evidence.
@@ -68,6 +76,24 @@ Likely phases:
 
 Touches all three components plus a `swagger.yml` change with both clients regenerated in the same
 change. Rough size: "record it + group totals by currency" is a week or so. Conversion is extra.
+
+**Slice A (backend, built):** the currency per receipt with the default chain, a `GET /currency`
+table, exponent validation and `decimal(13,3)` storage, the AI prompt returning the currency (and
+the stored default prompt upgraded when unedited), the recorded conversion with derivation and a
+`conversionNote`, the backfill of existing receipts, the Receipt Summary split by currency, claims
+reckoned in the base currency with an unconverted set, the packet and CSV columns, history entries.
+Also the "Convert (optional)" phase above, minus a rate source: the user types the rate or the
+amount charged; nothing is fetched.
+
+**Still to do:**
+
+- Desktop UI for all of the above (in progress), and mobile (only the regenerated client so far).
+- **Slice B:** the Report Builder (a `currency` dimension, per-currency sums, 3-place split
+  scale), the dashboard pie chart, and who-owes-whom (netted per currency). These still sum bare
+  amounts.
+- A rate source, if one is ever wanted; custom CURRENCY field values still have no currency of
+  their own (they inherit the receipt's in the summary and packet).
+- Re-deriving stored conversions if a group's base currency is changed.
 
 ## 5. Review queue for uncertain scans
 
