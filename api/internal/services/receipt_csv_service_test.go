@@ -16,8 +16,8 @@ func TestShouldBuildReceiptCsv(t *testing.T) {
 	defer repositories.TruncateTestDb()
 
 	expected :=
-		"Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date\n" +
-			"1,2025-01-01,2025-01-01,test,Jim,123.45,OPEN,\"Groceries,Food\",\"Bill,Essential\",2025-01-01\n"
+		"Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date,Currency,Base Amount,Exchange Rate,Rate Date,Rate Source\n" +
+			"1,2025-01-01,2025-01-01,test,Jim,123.45,OPEN,\"Groceries,Food\",\"Bill,Essential\",2025-01-01,,,,,\n"
 
 	date := time.Date(
 		2025, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -182,9 +182,9 @@ func TestShouldBuildItemCsv(t *testing.T) {
 	defer repositories.TruncateTestDb()
 
 	expected :=
-		"Id,Receipt Id,Receipt Name,Receipt Date,Name,Charged to User,Amount,Status,Categories,Tags\n" +
-			"1,2,Test Receipt,2025-01-01,Test Item,John,25.5,OPEN,\"Groceries,Food\",\"Essential,Bill\"\n" +
-			"2,3,Another Receipt,2025-01-02,Another Item,Jane,15.75,RESOLVED,Electronics,Gadget\n"
+		"Id,Receipt Id,Receipt Name,Receipt Date,Name,Charged to User,Amount,Status,Categories,Tags,Currency\n" +
+			"1,2,Test Receipt,2025-01-01,Test Item,John,25.5,OPEN,\"Groceries,Food\",\"Essential,Bill\",\n" +
+			"2,3,Another Receipt,2025-01-02,Another Item,Jane,15.75,RESOLVED,Electronics,Gadget,\n"
 
 	date1 := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	date2 := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)

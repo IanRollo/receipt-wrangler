@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"receipt-wrangler/api/internal/currency"
 	"receipt-wrangler/api/internal/models"
 	"receipt-wrangler/api/internal/structs"
 	"receipt-wrangler/api/internal/utils"
@@ -73,6 +74,9 @@ type UpsertSystemSettingsCommand struct {
 	// more for a security toggle than for a lifetime: a client that does not send
 	// it must not silently turn Secure cookies back off.
 	SecureCookies *bool `json:"secureCookies"`
+	// DefaultCurrency is the install default ISO 4217 code. A pointer for the same omitted-key
+	// reason as TimeZone: an older client must not reset it. An explicit "" is refused.
+	DefaultCurrency *string `json:"defaultCurrency"`
 }
 
 func (command *UpsertSystemSettingsCommand) LoadDataFromRequest(w http.ResponseWriter, r *http.Request) error {
@@ -187,6 +191,10 @@ func (command *UpsertSystemSettingsCommand) Validate() structs.ValidatorError {
 
 	if msg := validateTimeZone(command.TimeZone); len(msg) > 0 {
 		errorMap["timeZone"] = msg
+	}
+
+	if command.DefaultCurrency != nil && !currency.IsValid(*command.DefaultCurrency) {
+		errorMap["defaultCurrency"] = invalidCurrencyMessage
 	}
 
 	return vErr
@@ -332,6 +340,10 @@ func (command *UpsertSystemSettingsCommand) OmittedColumns() []string {
 		columns = append(columns, "SecureCookies")
 	}
 
+	if command.DefaultCurrency == nil {
+		columns = append(columns, "DefaultCurrency")
+	}
+
 	return columns
 }
 
@@ -365,5 +377,9 @@ func (command *UpsertSystemSettingsCommand) ApplyOmittedValues(existing models.S
 
 	if command.SecureCookies == nil {
 		updated.SecureCookies = existing.SecureCookies
+	}
+
+	if command.DefaultCurrency == nil {
+		updated.DefaultCurrency = existing.DefaultCurrency
 	}
 }

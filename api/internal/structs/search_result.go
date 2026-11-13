@@ -16,4 +16,6 @@ type SearchResult struct {
 	Amount        decimal.Decimal      `json:"amount"`
 	ReceiptStatus models.ReceiptStatus `json:"receiptStatus"`
 	PaidByUserId  uint                 `json:"paidByUserId"`
+	// Currency is the receipt's ISO 4217 code (multicurrency, fork feature).
+	Currency string `json:"currency"`
 }

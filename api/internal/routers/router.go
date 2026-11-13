@@ -61,6 +61,9 @@ func BuildRootRouter() *chi.Mux {
 	// Reimbursement claims (fork feature)
 	rootRouter.Mount("/api/claim", BuildClaimRouter())
 
+	// ISO 4217 currency table (multicurrency, fork feature)
+	rootRouter.Mount("/api/currency", BuildCurrencyRouter())
+
 	// Tag Router
 	tagRouter := BuildTagRouter()
 	rootRouter.Mount("/api/tag", tagRouter)

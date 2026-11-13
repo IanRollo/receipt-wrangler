@@ -350,6 +350,10 @@ func enforceReceiptCreate(
 		return false, nil
 	}
 
+	if !enforceReceiptCurrency(w, command, nil) {
+		return false, nil
+	}
+
 	allowed, denyMessage, err := enforceReceiptGrantSelection(userId, command.GroupId, command)
 	if err != nil {
 		return false, err
@@ -645,6 +649,10 @@ func UpdateReceipt(w http.ResponseWriter, r *http.Request) {
 					return 0, nil
 				}
 				targetGroupId = command.GroupId
+			}
+
+			if !enforceReceiptCurrency(w, command, &currentReceipt) {
+				return 0, nil
 			}
 
 			allowed, denyMessage, err := enforceReceiptGrantSelection(token.UserId, targetGroupId, command)

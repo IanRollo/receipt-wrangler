@@ -18,6 +18,11 @@ type UpdateGroupReceiptSettingsCommand struct {
 	HideShareCategories   bool `json:"hideShareCategories"`
 	HideShareTags         bool `json:"hideShareTags"`
 
+	// DefaultCurrency is the group's default (and base) ISO 4217 currency. A pointer so a client
+	// that omits the key leaves the stored value alone; an explicit "" clears it back to "the
+	// install default".
+	DefaultCurrency *string `json:"defaultCurrency"`
+
 	QuickScanPaidByEnabled     bool                              `json:"quickScanPaidByEnabled"`
 	QuickScanPaidByRequired    bool                              `json:"quickScanPaidByRequired"`
 	QuickScanDefaultPaidByType models.QuickScanDefaultPaidByType `json:"quickScanDefaultPaidByType"`
@@ -145,6 +150,10 @@ func (command UpdateGroupReceiptSettingsCommand) Validate() structs.ValidatorErr
 		if err != nil || len(*command.ReceiptSummaryPosition) == 0 {
 			vErr.Errors["receiptSummaryPosition"] = "Invalid receipt summary position. Must be TOP or BOTTOM"
 		}
+	}
+
+	if msg := validateOptionalCurrencyCode(command.DefaultCurrency); len(msg) > 0 {
+		vErr.Errors["defaultCurrency"] = msg
 	}
 
 	return vErr

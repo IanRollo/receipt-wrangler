@@ -5,6 +5,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"receipt-wrangler/api/internal/commands"
+	"receipt-wrangler/api/internal/currency"
 	"receipt-wrangler/api/internal/models"
 	"receipt-wrangler/api/internal/structs"
 )
@@ -137,6 +138,7 @@ func (repository SystemSettingsRepository) UpdateSystemSettings(command commands
 	// response echoes the stored value rather than a 0.
 	omittedColumns := append([]string{"TaskQueueConfigurations"}, command.OmittedColumns()...)
 	command.ApplyOmittedValues(existingSettings, &updatedSettings)
+	updatedSettings.DefaultCurrency = currency.Normalize(updatedSettings.DefaultCurrency)
 
 	err = db.Transaction(func(tx *gorm.DB) error {
 		txErr := tx.Model(&updatedSettings).Select("*").Omit(omittedColumns...).Where("id = ?", existingSettings.ID).Updates(&updatedSettings).Error

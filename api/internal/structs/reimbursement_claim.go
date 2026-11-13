@@ -36,6 +36,20 @@ type ClaimView struct {
 	OutstandingAmount      string                 `json:"outstandingAmount"`
 	DaysWaiting            *int                   `json:"daysWaiting,omitempty"`
 	LedgerEntries          []ClaimLedgerEntryView `json:"ledgerEntries"`
+	// Multicurrency (fork feature). Currency is the claim's group's base currency, the one every
+	// figure above is reckoned in. A linked receipt counts at its amount when it is in that
+	// currency, at its recorded baseAmount when it was converted, and otherwise is UNCONVERTED:
+	// left out of the figures and reported here instead. UnconvertedTotals is [] when empty.
+	Currency                string               `json:"currency"`
+	UnconvertedReceiptCount int                  `json:"unconvertedReceiptCount"`
+	UnconvertedTotals       []ClaimCurrencyTotal `json:"unconvertedTotals"`
+}
+
+// ClaimCurrencyTotal is an amount in one currency, money as a decimal string at that
+// currency's own number of decimal places.
+type ClaimCurrencyTotal struct {
+	Currency string `json:"currency"`
+	Total    string `json:"total"`
 }
 
 type ClaimLedgerEntryView struct {
@@ -56,11 +70,16 @@ type ClaimListView struct {
 }
 
 type ClaimListSummaryView struct {
-	AsOfDate          string `json:"asOfDate"`
-	ClaimCount        int    `json:"claimCount"`
-	AwaitingCount     int    `json:"awaitingCount"`
-	OutstandingTotal  string `json:"outstandingTotal"`
-	OldestDaysWaiting *int   `json:"oldestDaysWaiting,omitempty"`
+	AsOfDate         string `json:"asOfDate"`
+	ClaimCount       int    `json:"claimCount"`
+	AwaitingCount    int    `json:"awaitingCount"`
+	OutstandingTotal string `json:"outstandingTotal"`
+	// OutstandingTotals (multicurrency, fork feature) is the outstanding amount per claim
+	// currency, [] when nothing is awaiting. Claims of one group share its base currency, so
+	// only the All group can show several. OutstandingTotal stays the sum of the claims in one
+	// currency: the only one present, else the install default.
+	OutstandingTotals []ClaimCurrencyTotal `json:"outstandingTotals"`
+	OldestDaysWaiting *int                 `json:"oldestDaysWaiting,omitempty"`
 }
 
 // ClaimReceiptsResult reports, per requested receipt, whether an add or remove

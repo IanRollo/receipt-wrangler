@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	"net/http"
+	"receipt-wrangler/api/internal/currency"
 	"receipt-wrangler/api/internal/models"
 	"receipt-wrangler/api/internal/structs"
 	"receipt-wrangler/api/internal/utils"
@@ -24,6 +25,15 @@ type UpsertReceiptCommand struct {
 	Comments        []UpsertCommentCommand          `json:"comments"`
 	CustomFields    []UpsertCustomFieldValueCommand `json:"customFields"`
 	CreatedByString string                          `json:"createdByString"`
+	// Multicurrency (fork feature). Currency is an ISO 4217 code; empty or absent means
+	// "default" on create and "keep the stored one" on update. The conversion fields are
+	// pointers so absence is distinguishable; see repositories.ResolveReceiptCurrency for the
+	// resolution and derivation rules. Send null or omit a field, never "".
+	Currency           string           `json:"currency"`
+	BaseAmount         *decimal.Decimal `json:"baseAmount"`
+	ExchangeRate       *decimal.Decimal `json:"exchangeRate"`
+	ExchangeRateDate   *string          `json:"exchangeRateDate"`
+	ExchangeRateSource *string          `json:"exchangeRateSource"`
 	// EmailInbox and EmailSender are server-set by the email task and never
 	// read from a request (json:"-"); ToReceipt copies them explicitly.
 	EmailInbox  string `json:"-"`
@@ -117,6 +127,7 @@ func (receipt *UpsertReceiptCommand) ToReceipt() (models.Receipt, error) {
 	}
 
 	// json:"-" keeps these off the round trip above, so they are copied here.
+	result.Currency = currency.Normalize(receipt.Currency)
 	result.EmailInbox = receipt.EmailInbox
 	result.EmailSender = receipt.EmailSender
 
