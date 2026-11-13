@@ -25,6 +25,8 @@ class _$SearchResult extends SearchResult {
   final int? paidByUserId;
   @override
   final String createdAt;
+  @override
+  final String? currency;
 
   factory _$SearchResult([void Function(SearchResultBuilder)? updates]) =>
       (SearchResultBuilder()..update(updates))._build();
@@ -38,7 +40,8 @@ class _$SearchResult extends SearchResult {
       this.amount,
       this.receiptStatus,
       this.paidByUserId,
-      required this.createdAt})
+      required this.createdAt,
+      this.currency})
       : super._();
   @override
   SearchResult rebuild(void Function(SearchResultBuilder) updates) =>
@@ -59,7 +62,8 @@ class _$SearchResult extends SearchResult {
         amount == other.amount &&
         receiptStatus == other.receiptStatus &&
         paidByUserId == other.paidByUserId &&
-        createdAt == other.createdAt;
+        createdAt == other.createdAt &&
+        currency == other.currency;
   }
 
   @override
@@ -74,6 +78,7 @@ class _$SearchResult extends SearchResult {
     _$hash = $jc(_$hash, receiptStatus.hashCode);
     _$hash = $jc(_$hash, paidByUserId.hashCode);
     _$hash = $jc(_$hash, createdAt.hashCode);
+    _$hash = $jc(_$hash, currency.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -89,7 +94,8 @@ class _$SearchResult extends SearchResult {
           ..add('amount', amount)
           ..add('receiptStatus', receiptStatus)
           ..add('paidByUserId', paidByUserId)
-          ..add('createdAt', createdAt))
+          ..add('createdAt', createdAt)
+          ..add('currency', currency))
         .toString();
   }
 }
@@ -135,6 +141,10 @@ class SearchResultBuilder
   String? get createdAt => _$this._createdAt;
   set createdAt(String? createdAt) => _$this._createdAt = createdAt;
 
+  String? _currency;
+  String? get currency => _$this._currency;
+  set currency(String? currency) => _$this._currency = currency;
+
   SearchResultBuilder() {
     SearchResult._defaults(this);
   }
@@ -151,6 +161,7 @@ class SearchResultBuilder
       _receiptStatus = $v.receiptStatus;
       _paidByUserId = $v.paidByUserId;
       _createdAt = $v.createdAt;
+      _currency = $v.currency;
       _$v = null;
     }
     return this;
@@ -186,6 +197,7 @@ class SearchResultBuilder
           paidByUserId: paidByUserId,
           createdAt: BuiltValueNullFieldError.checkNotNull(
               createdAt, r'SearchResult', 'createdAt'),
+          currency: currency,
         );
     replace(_$result);
     return _$result;

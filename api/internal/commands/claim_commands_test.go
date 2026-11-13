@@ -100,7 +100,7 @@ func TestUpsertClaimCommand_Rejections(t *testing.T) {
 		"bad submitted date": {`{"name":"a","status":"DRAFT","submittedDate":"09/01/2026"}`, "submittedDate"},
 		"bad due date":       {`{"name":"a","status":"DRAFT","dueDate":"tomorrow"}`, "dueDate"},
 		"negative amount":    {`{"name":"a","status":"DRAFT","claimedAmount":"-1"}`, "claimedAmount"},
-		"three decimals":     {`{"name":"a","status":"DRAFT","claimedAmount":"1.005"}`, "claimedAmount"},
+		"four decimals":      {`{"name":"a","status":"DRAFT","claimedAmount":"1.0005"}`, "claimedAmount"},
 		"too large":          {`{"name":"a","status":"DRAFT","claimedAmount":"100000000"}`, "claimedAmount"},
 		"long reference":     {`{"name":"a","status":"DRAFT","referenceNumber":"` + strings.Repeat("x", 101) + `"}`, "referenceNumber"},
 		"long type":          {`{"name":"a","status":"DRAFT","type":"` + strings.Repeat("x", 101) + `"}`, "type"},

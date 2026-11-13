@@ -55,6 +55,12 @@ class _$Claim extends Claim {
   final int? daysWaiting;
   @override
   final BuiltList<ClaimLedgerEntry> ledgerEntries;
+  @override
+  final String? currency;
+  @override
+  final int? unconvertedReceiptCount;
+  @override
+  final BuiltList<ClaimCurrencyTotal>? unconvertedTotals;
 
   factory _$Claim([void Function(ClaimBuilder)? updates]) =>
       (ClaimBuilder()..update(updates))._build();
@@ -83,7 +89,10 @@ class _$Claim extends Claim {
       required this.paidAmount,
       required this.outstandingAmount,
       this.daysWaiting,
-      required this.ledgerEntries})
+      required this.ledgerEntries,
+      this.currency,
+      this.unconvertedReceiptCount,
+      this.unconvertedTotals})
       : super._();
   @override
   Claim rebuild(void Function(ClaimBuilder) updates) =>
@@ -119,7 +128,10 @@ class _$Claim extends Claim {
         paidAmount == other.paidAmount &&
         outstandingAmount == other.outstandingAmount &&
         daysWaiting == other.daysWaiting &&
-        ledgerEntries == other.ledgerEntries;
+        ledgerEntries == other.ledgerEntries &&
+        currency == other.currency &&
+        unconvertedReceiptCount == other.unconvertedReceiptCount &&
+        unconvertedTotals == other.unconvertedTotals;
   }
 
   @override
@@ -149,6 +161,9 @@ class _$Claim extends Claim {
     _$hash = $jc(_$hash, outstandingAmount.hashCode);
     _$hash = $jc(_$hash, daysWaiting.hashCode);
     _$hash = $jc(_$hash, ledgerEntries.hashCode);
+    _$hash = $jc(_$hash, currency.hashCode);
+    _$hash = $jc(_$hash, unconvertedReceiptCount.hashCode);
+    _$hash = $jc(_$hash, unconvertedTotals.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -179,7 +194,10 @@ class _$Claim extends Claim {
           ..add('paidAmount', paidAmount)
           ..add('outstandingAmount', outstandingAmount)
           ..add('daysWaiting', daysWaiting)
-          ..add('ledgerEntries', ledgerEntries))
+          ..add('ledgerEntries', ledgerEntries)
+          ..add('currency', currency)
+          ..add('unconvertedReceiptCount', unconvertedReceiptCount)
+          ..add('unconvertedTotals', unconvertedTotals))
         .toString();
   }
 }
@@ -295,6 +313,21 @@ class ClaimBuilder implements Builder<Claim, ClaimBuilder> {
   set ledgerEntries(ListBuilder<ClaimLedgerEntry>? ledgerEntries) =>
       _$this._ledgerEntries = ledgerEntries;
 
+  String? _currency;
+  String? get currency => _$this._currency;
+  set currency(String? currency) => _$this._currency = currency;
+
+  int? _unconvertedReceiptCount;
+  int? get unconvertedReceiptCount => _$this._unconvertedReceiptCount;
+  set unconvertedReceiptCount(int? unconvertedReceiptCount) =>
+      _$this._unconvertedReceiptCount = unconvertedReceiptCount;
+
+  ListBuilder<ClaimCurrencyTotal>? _unconvertedTotals;
+  ListBuilder<ClaimCurrencyTotal> get unconvertedTotals =>
+      _$this._unconvertedTotals ??= ListBuilder<ClaimCurrencyTotal>();
+  set unconvertedTotals(ListBuilder<ClaimCurrencyTotal>? unconvertedTotals) =>
+      _$this._unconvertedTotals = unconvertedTotals;
+
   ClaimBuilder() {
     Claim._defaults(this);
   }
@@ -326,6 +359,9 @@ class ClaimBuilder implements Builder<Claim, ClaimBuilder> {
       _outstandingAmount = $v.outstandingAmount;
       _daysWaiting = $v.daysWaiting;
       _ledgerEntries = $v.ledgerEntries.toBuilder();
+      _currency = $v.currency;
+      _unconvertedReceiptCount = $v.unconvertedReceiptCount;
+      _unconvertedTotals = $v.unconvertedTotals?.toBuilder();
       _$v = null;
     }
     return this;
@@ -385,6 +421,9 @@ class ClaimBuilder implements Builder<Claim, ClaimBuilder> {
                 outstandingAmount, r'Claim', 'outstandingAmount'),
             daysWaiting: daysWaiting,
             ledgerEntries: ledgerEntries.build(),
+            currency: currency,
+            unconvertedReceiptCount: unconvertedReceiptCount,
+            unconvertedTotals: _unconvertedTotals?.build(),
           );
     } catch (_) {
       late String _$failedField;
@@ -394,6 +433,9 @@ class ClaimBuilder implements Builder<Claim, ClaimBuilder> {
 
         _$failedField = 'ledgerEntries';
         ledgerEntries.build();
+
+        _$failedField = 'unconvertedTotals';
+        _unconvertedTotals?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(r'Claim', _$failedField, e.toString());
       }

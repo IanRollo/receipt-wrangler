@@ -40,6 +40,7 @@ part 'app_data.g.dart';
 /// * [currencySymbolPosition] 
 /// * [currencyHideDecimalPlaces] - Whether to hide decimal places
 /// * [timeZone] - The app time zone, an IANA name such as America/New_York (\"UTC\" when unset or invalid). Clients work out \"today\" and display instants (Added At, Resolved Date) in it. A receipt's Date is a calendar day and is always read in UTC. A plain string, not an enum, so a released client never fails the payload on a zone it does not know.
+/// * [defaultCurrency] - The install's default ISO 4217 currency, resolved (\"USD\" when unset), never empty. A plain string, never an enum.
 /// * [icons] - Icons in the system
 /// * [appPermissions] - The calling user's effective app-level permissions. Deliberately typed as plain strings rather than the Permission enum: this is server-resolved data, not a contract. A granted entry may be a wildcard (e.g. \"app.*\"), which is not an enum member, and a client built before a newly added permission must still be able to parse the payload. Clients match these with the wildcard matcher.
 /// * [groupPermissions] - The calling user's effective group-level permissions, keyed by group id. Plain strings for the same reason as appPermissions.
@@ -107,6 +108,10 @@ abstract class AppData implements Built<AppData, AppDataBuilder> {
   /// The app time zone, an IANA name such as America/New_York (\"UTC\" when unset or invalid). Clients work out \"today\" and display instants (Added At, Resolved Date) in it. A receipt's Date is a calendar day and is always read in UTC. A plain string, not an enum, so a released client never fails the payload on a zone it does not know.
   @BuiltValueField(wireName: r'timeZone')
   String? get timeZone;
+
+  /// The install's default ISO 4217 currency, resolved (\"USD\" when unset), never empty. A plain string, never an enum.
+  @BuiltValueField(wireName: r'defaultCurrency')
+  String? get defaultCurrency;
 
   /// Icons in the system
   @BuiltValueField(wireName: r'icons')
@@ -246,6 +251,13 @@ class _$AppDataSerializer implements PrimitiveSerializer<AppData> {
       yield r'timeZone';
       yield serializers.serialize(
         object.timeZone,
+        specifiedType: const FullType(String),
+      );
+    }
+    if (object.defaultCurrency != null) {
+      yield r'defaultCurrency';
+      yield serializers.serialize(
+        object.defaultCurrency,
         specifiedType: const FullType(String),
       );
     }
@@ -419,6 +431,13 @@ class _$AppDataSerializer implements PrimitiveSerializer<AppData> {
             specifiedType: const FullType(String),
           ) as String;
           result.timeZone = valueDes;
+          break;
+        case r'defaultCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.defaultCurrency = valueDes;
           break;
         case r'icons':
           final valueDes = serializers.deserialize(

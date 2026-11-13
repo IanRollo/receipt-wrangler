@@ -4683,3 +4683,256 @@ Ghostscript. `services/claim_packet_test.go` covers the category fold, image and
 flattened to white, garbage rejected), the bounds, and that the normal CSV has no Images column. Image
 fixtures written by `CreateReceiptImage` are read-only on Windows (`utils.WriteFile` passes mode
 `777` decimal), so `removeStoredImages` chmods before removing.
+
+## Processing queue (fork feature)
+
+`GET /processingQueue/group/{groupId}` (`getProcessingQueueForGroup`, swagger tag `ProcessingQueue`)
+lists every quick scan and email upload task in asynq's pending, scheduled, active, retry and archived
+sets. Completed tasks are not listed (a succeeded quick scan leaves Redis at once; a succeeded email task
+lingers for `completedTaskRetention`, and a receipt already exists for it).
+
+- **Where the code lives.** `wranglerasynq/processing_queue.go` reads and decodes (it imports `services`,
+  so the reading cannot live in `services`); `services/processing_queue.go` applies visibility;
+  `handlers/processing_queue.go`, `routers/processing_queue.go` (mounted at `/api/processingQueue`),
+  `repositories/processing_queue.go` (system task ids), `structs/processing_queue.go` (the wire types).
+- **State mapping** (plain strings, `structs.ProcessingQueueState*`): pending and scheduled -> `QUEUED`,
+  active -> `PROCESSING`, retry -> `RETRYING`, archived -> `FAILED`. The task type comes from the asynq
+  task type (`receipt:quick_scan` / `email:process`); any other type in those queues is skipped.
+- **Visibility.** Each item is judged in its own group, never the one browsed: `group.activities.read` in
+  that group, and an item run by a member the caller cannot see there is hidden
+  (`ActivityVisibilityResolver`, the activity feed's own rule; an email upload has no uploader and stays
+  visible, like `ran_by_user_id IS NULL`). A real group is gated up front by `HandleRequest`; the
+  synthetic All group is not gated by its membership (it grants nothing) and lists every group where the
+  caller holds the read permission. `canBeRestarted` / `canRetryNow` are switched off for a group where the
+  caller lacks `group.activities.rerun`. A task whose payload does not decode, or whose group cannot be
+  resolved (email: `groupSettingsId` -> group), is logged and left out. The pure selection is
+  `filterProcessingQueueItems`, tested without a database.
+- **Cost.** `processingQueuePerStateCap` = 100 tasks read per queue state per call (page size 100, page 1),
+  so at most 1000 tasks are decoded. Pending lists oldest first, so past the cap it is the newest uploads
+  that are cut; `truncated` says the cap was hit. The cap applies before the group filter.
+- **`uploadedAt` is the stored file's modification time**, because asynq's `TaskInfo` has no enqueue time.
+  Absent when the file is gone. Items sort newest first by it, else by `lastFailedAt`.
+- **Why the item routes are keyed by queue and task id.** The existing preview / download / rerun routes
+  address a `system_tasks` row, and a pending, active or early-failing task has none. So
+  `GET /processingQueue/task/{queue}/{taskId}/sourceFile` (+ `/download`) and
+  `POST /processingQueue/task/{queue}/{taskId}/retry` work for every item. They reuse the same code:
+  `authorizeAndResolveSourceFile`, `writeSourceFilePreview` / `writeSourceFileDownload` (extracted from the
+  activity handlers in `handlers/system_task.go`) and `enforceActivityActorVisible`. An unknown task, a
+  queue that is not an upload queue and an undecodable payload all answer 403 with the access-denied body,
+  so the status is no oracle for task ids. `systemTaskId` is on an item when a row exists (lowest id of the
+  QUICK_SCAN / EMAIL_UPLOAD rows sharing the asynq id) so the activity routes can be used too.
+- **Retry.** `RunProcessingQueueTaskNow`: a `RETRYING` task is moved to pending immediately (the same
+  attempt asynq would make at `nextRetryAt`, so no new duplicate-receipt risk); a `FAILED` (archived) task
+  is rerun under the rerun endpoint's rules (`CanRerunTask` + `RerunSourceFilesPresent`). Pending, active,
+  scheduled and completed tasks are refused with a 400, since `Inspector.RunTask` does not refuse by state.
+  Gated on `group.activities.rerun`.
+- **Flags** reuse `flagsForState` (extracted from `resolveActivityFlags` in `source_file.go`), so the queue
+  and the activity feed cannot disagree about `hasSourceFile` / `canBeRestarted`.
+- **API-key scopes.** The three GETs classify as reads and the retry as a write by method alone;
+  `middleware/api_key_scope_processing_queue_test.go` pins it.
+- **Tests.** Mapping, decoding, cap, sort and the retry refusals use a fake `processingQueueLister` (no
+  Redis); visibility is `services/processing_queue_test.go`; system task ids are
+  `repositories/processing_queue_test.go`. The handlers are not covered by a Go test (they need Redis); they
+  were exercised against the local stack.
+
+## Multicurrency (fork feature)
+
+Every receipt has an explicit ISO 4217 currency; the server never adds amounts across currencies;
+and the user can record the conversion they were actually charged, as evidence. This is slice A
+(`FORK_ROADMAP.md` item 4); the desktop UI is built from this contract, mobile only carries the
+regenerated client. Slice B (Report Builder, dashboard pie chart, who-owes-whom) is not done: see
+the end of this section.
+
+Files, kept separate so upstream merges stay clean: `internal/currency/` (the code table and the
+pure arithmetic), `models/receipt_multicurrency.go` + `models/calendar_day.go`,
+`commands/receipt_multicurrency.go`, `repositories/currency.go` (resolution),
+`repositories/currency_migrations.go`, `handlers/receipt_currency_enforcement.go`,
+`handlers/claim_currency_enforcement.go`, `handlers/currency.go` + `routers/currency.go`
+(`GET /currency`), `constants/default_prompt.go`, `services/{claim_currency,claim_packet_currency,
+receipt_csv_currency,receipt_history_diff_currency,receipt_processing_currency}.go`,
+`structs/receipt_history_currency.go`. `swagger.yml` marks its additions
+`# --- Multicurrency (fork feature) ---` (paths and schemas), and edits existing schemas only by
+adding optional properties.
+
+### The currency table
+
+`internal/currency` holds the active ISO 4217 codes with their **minor-unit exponent** (JPY 0, USD 2,
+JOD/KWD/BHD/OMR/TND/IQD/LYD 3) and a display symbol where one identifies the currency. `Normalize`
+trims and upper-cases; `IsValid`, `ExponentOf`, `ValidateAmount`, `RoundToExponent` (half-even),
+`DeriveConversion`, `ConversionNote` are pure. `GET /currency` serves the table (`CurrencyInfo`:
+code, exponent, symbol) so no client carries a copy. BGN is kept after Bulgaria's euro adoption,
+for older receipts. Unknown code: 400 under `currency`.
+
+### Wire contract (all additive, all plain strings)
+
+`Receipt` and `UpsertReceiptCommand` gain optional `currency`, `baseAmount`, `exchangeRate`,
+`exchangeRateDate` (bare `yyyy-MM-dd`), `exchangeRateSource` (<= 255); `Receipt` also gains the
+read-only `conversionNote` and the read-only server-set `baseAmountCurrency` (the currency `baseAmount` is in). `SystemSettings` / `UpsertSystemSettingsCommand` / `AppData` gain
+`defaultCurrency` (the AppData value is **resolved**, never `""`). `GroupReceiptSettings` gains
+`defaultCurrency` (stored, `""` = install default) and `baseCurrency` (**resolved**, never `""`, the
+currency the group's claims are reckoned in; it rides everywhere the settings do: AppData groups,
+`GetGroupById`, the PUT response); `UpdateGroupReceiptSettingsCommand` gains `defaultCurrency`.
+`SearchResult.currency`. Receipt summary: `ReceiptSummaryRow.currencyTotals`,
+`ReceiptSummary.baseCurrency`. Claims: `Claim.currency`, `unconvertedReceiptCount`,
+`unconvertedTotals`, `ClaimListSummary.outstandingTotals`. History field codes `CURRENCY`,
+`BASE_AMOUNT`, `EXCHANGE_RATE`, `EXCHANGE_RATE_DATE`, `EXCHANGE_RATE_SOURCE`. Every pointer-style
+setting follows the `timeZone` rule: an omitted key leaves the stored value alone.
+
+### Resolution (`repositories.ResolveReceiptCurrency`)
+
+Runs on every create and update, idempotently, in two places: the handlers call it on a copy to turn
+mistakes into **400 validator errors** (`enforceReceiptCurrency`, from both create endpoints and the
+update), and `CreateReceipt` / `UpdateReceipt` call it again (`ResolveReceiptCurrencyForWrite`),
+because quick scan, email and AI reach the repository without a handler.
+
+- Currency: the request's, else on an update the **stored** one, else the group's default, else the
+  install default. Empty or absent is never an error (released mobile builds send nothing), and an
+  old client editing a EUR receipt keeps it EUR. After resolution the stored value is never empty.
+- Amounts are checked against the currency's exponent: `amount` and `receiptItems.N.amount` (items
+  inherit the receipt's currency). Too many places is a 400, never a silent rounding.
+- `Receipt.Amount` and `Item.Amount` are `decimal(13,3)`; the claim `claimed_amount` and ledger
+  `amount` are too (3 places is the most any currency needs). Claim and ledger amounts are checked
+  against the **group's base currency** exponent by `enforceClaimAmountExponent`; the command's own
+  validator now only caps at 3 places.
+
+### Conversion (evidence, not a feature of the arithmetic)
+
+Meaningful only when the receipt's currency differs from the group's base currency. Columns on
+`receipts` (a nullable `base_amount decimal(13,3)`, `exchange_rate decimal(20,6)`,
+`exchange_rate_date`, `exchange_rate_source`), embedded in `Receipt` as `ReceiptMulticurrency` so
+the hot model file carries one line; a table of their own would have meant a join on every receipt
+read for no gain.
+
+- **Equal to the base currency**: all four cleared, even if the request sent them.
+- **None of the four keys sent**: an update keeps the stored conversion while the currency and group
+  are unchanged; moving the receipt to another group drops it (it was relative to the old base).
+- **Any key sent**: the request is authoritative for the whole set, which is also how a client
+  clears one (send e.g. a blank `exchangeRateSource` alone). `baseAmount` alone derives the rate
+  (base / amount, 6 places; none for a zero amount); `exchangeRate` alone derives the base amount
+  (amount x rate, half-even to the base currency's exponent); both are stored **as given**. A rate is
+  rounded to 6 places. `baseAmount` is checked by the base exponent.
+- `conversionNote` is computed by `Receipt.AfterFind` from the stored figures (it is a pure function
+  of columns already loaded, so every read path gets it) when `baseAmount` and amount x rate differ
+  by more than 1%. It never blocks a save.
+- Send `null` or omit a decimal key, never `""` (the command fields are `*decimal.Decimal`).
+- **The conversion is stamped with the base currency it was written against**:
+  `Receipt.baseAmountCurrency` (column `base_amount_currency`, `varchar(3)`; named so it cannot be
+  confused with `GroupReceiptSettings.baseCurrency`). It is server-set and read-only (the command
+  field is `json:"-"`, so a request cannot write it); the resolver sets it to the group's resolved
+  base whenever a conversion is written or derived, clears it with the conversion, and keeps the
+  stored stamp when an update sends no conversion keys. **A conversion counts only while the stamp
+  equals the claim's current base** (`models.Receipt.ConvertedTo`; `claim_currency.go`
+  `foldClaimReceipts`; the packet's `countedAmount`). Otherwise the receipt is unconverted: in
+  `unconvertedReceiptCount`, in `unconvertedTotals` at its own amount, and in the packet's
+  "Not converted" block, while its per-receipt section still shows the stored conversion in its own
+  currency ("Amount in USD", "Not converted to EUR: the recorded conversion is to USD") and
+  `receipts.csv` keeps `Base Amount` and `Base Currency`. Re-entering a conversion stamps the new
+  base. A group move still drops the conversion. The Receipt Summary never used `baseAmount`.
+  Migration `stamp-receipt-conversion-currency` stamps any row with a `baseAmount` and no stamp with
+  its group's current base (no production row had one; it exists for dev databases).
+
+### Migrations
+
+Both are one-time entries in `repositories/data_migrations.go`'s registry.
+
+- `backfill-receipt-currency`: every receipt with a NULL or empty `currency` gets the **install
+  default** (`USD` on a fresh settings row), so a later change of the default never re-labels old
+  receipts. Runs once, after AutoMigrate has added the column.
+- `upgrade-default-prompt-currency`: if the stored "Default Prompt" is exactly the previous default
+  (compared ignoring line endings and surrounding whitespace, `constants.PreviousDefaultPromptText`)
+  it becomes `constants.DefaultPromptText`, which asks for `currency`. An edited prompt is left alone
+  and one INFO line says it lacks `"currency"`; scans then fall back to the group default. New
+  installs get the new text from `CreateDefaultPrompt`.
+- **Column widening.** `Receipt.Amount`, `Item.Amount`, `Claim.ClaimedAmount` and
+  `ClaimLedgerEntry.Amount` are tagged `decimal(13,3)`. GORM's migrator compares a decimal column's
+  declared precision and scale (`migrator.go`, "check precision") and issues an `ALTER COLUMN` when
+  they differ, so **Postgres and MySQL are widened by AutoMigrate itself at the next start**; no raw
+  SQL was written, and this was **not exercised against either engine** (read from the GORM source
+  only). On **SQLite** nothing physical changes: it stores any numeric as it is given, and
+  `TestAutoMigrateWidensReceiptAmountWithoutLosingRows` checks that AutoMigrate over an old
+  `decimal(10,2)` table keeps the rows and round-trips a three-place amount. An operator on
+  Postgres/MySQL who would rather not rely on that can run
+  `ALTER TABLE receipts ALTER COLUMN amount TYPE numeric(13,3)` (Postgres) /
+  `ALTER TABLE receipts MODIFY amount decimal(13,3) NOT NULL` (MySQL) first, and likewise `items`,
+  `claims.claimed_amount`, `claim_ledger_entries.amount`. `Item.Amount` previously had no GORM
+  type at all (its `sql:` tag is not a GORM tag).
+
+### AI extraction
+
+The default prompt asks for `"currency"` (the code printed, or inferred from the symbol and the
+receipt's country, omitted when unsure). `readReceipt` ends with `normalizeAiCurrency`: a valid code
+is kept, otherwise the field is dropped (so the group default applies when the receipt is stored);
+`sanitizeAiMulticurrency` drops a non-string `currency` and any conversion keys before unmarshalling,
+so a malformed answer never loses a scan. **AI-sourced amounts with more places than the currency
+allows are rounded half-even to the exponent** (a hand-entered one is refused); the rounding uses the
+model's currency, else the group's base currency.
+
+### Receipt Summary
+
+Legacy `total` and `customFieldTotals` now cover **only receipts in `baseCurrency`** (the viewed
+group's, or the install default under the All group); a receipt with no currency counts as the base.
+`receiptCount` still counts every receipt in the filter, so it keeps agreeing with the table.
+`currencyTotals` holds the same figures per currency present, base first then by code, `[]` when none.
+Custom field values carry no currency of their own and are attributed to their receipt's.
+
+### Claims
+
+A claim is reckoned in its group's base currency (`Claim.currency`). A linked receipt counts at its
+`amount` if in the base currency (or empty), else at its `baseAmount` **if `baseAmountCurrency` equals the claim's currency**, else it is **unconverted**:
+out of every figure (`receiptsTotal`, claimed, outstanding), counted in `unconvertedReceiptCount`
+and totalled per currency in `unconvertedTotals`. `receiptCount` still counts all linked receipts.
+Money strings use the base currency's exponent (`5000` for JPY, `12.345` for JOD; USD is unchanged).
+`ClaimListSummary.outstandingTotals` is per currency (only the All group can show several);
+`outstandingTotal` is the total of the one currency present, else of the install default.
+
+### Claim packet
+
+Cover sheet: a "Claim currency" row, and when anything is unconverted a red "Incomplete" box with
+the count and per-currency totals. Single-currency packets print exactly as before (the install's
+own currency keeps the app's symbol format). Other currencies print as `1,234.50 EUR` at their own
+number of places. When any receipt is foreign the receipts table gains a "Counted in <base>"
+column; category subtotals and the grand total use only base and converted receipts; unconverted
+receipts are listed in a **Not converted** block per currency with a total, and appear in no subtotal.
+Each receipt section states its currency, and for a converted one the base amount, `1 EUR = 1.085
+USD`, rate date, source and any conversion note. `manifest.json` carries the new `Claim` fields.
+`receipts.csv` gains trailing `Currency`, `Base Amount`, `Base Currency`, `Exchange Rate`, `Rate Date`, `Rate Source`
+(before the packet-only `Images` column, which stays last); `items.csv` gains `Currency`.
+
+### Shared files this feature edits
+
+One field or call each: `models/receipt.go` (embedded block, `decimal(13,3)`), `models/item.go`,
+`models/claim.go` (column types), `models/system_settings.go`, `models/group_receipt_settings.go`,
+`commands/upsert_receipt_command.go`, `commands/upsert_system_settings_command.go`,
+`commands/update_group_receipt_settings_command.go`, `commands/claim_values.go`,
+`repositories/receipts.go` (two resolve calls and the explicit conversion-column write in
+`UpdateReceipt`), `repositories/system_settings.go`, `repositories/group_receipt_settings.go`,
+`repositories/data_migrations.go`, `repositories/claims.go`, `handlers/receipts.go` (two
+`enforceReceiptCurrency` calls), `handlers/claims.go`, `routers/router.go`, `services/auth.go` (one
+line), `services/claims.go`, `services/receipt_summary.go`, `services/receipt_csv.go`,
+`services/receipt_history_diff.go` (one call), `services/receipt_processing.go`,
+`services/prompts.go`, `services/claim_packet.go`, `services/claim_packet_html.go`, `swagger.yml`.
+Services files import the table as `ccy` because a `currency(...)` test helper in package services
+would otherwise clash with the package name.
+
+### Tests
+
+`currency/currency_test.go` (table, exponents, validation, rounding, derivation both ways, the note),
+`repositories/multicurrency_test.go` (resolution including an old-client update keeping EUR,
+conversion rules, pointer settings, both migrations, the AutoMigrate widening),
+`handlers/multicurrency_test.go` (old-shaped requests, resolution order, 400s, three-place amounts,
+derivation, both-given plus note, clearing, replacing, claim figures with base / converted /
+unconverted, a JPY-group claim and ledger exponent, the All-group per-currency summary, `GET /currency`),
+`services/multicurrency_test.go` (AI sanitizing / fallback / rounding, summary fold, claim fold and
+list, packet cover sheet / subtotals / Not-converted block, CSV columns, history diff).
+
+### Slice B: what each remaining surface needs
+
+- **Report Builder** (`internal/reporting`, `services/report_service.go`, `report_data.go`): add
+  `currency` as a column / grouping dimension and make a measure sum **within** a currency (the
+  engine today sums bare amounts, and `receiptsource/split.go` allocates at a minimum scale of 2, so
+  3-place currencies need that raised). A report across currencies must either group by currency or
+  refuse to total.
+- **Dashboard pie chart** (`services/pie_chart.go`): bucket by currency (or pick one); today it
+  folds `Receipt.Amount` into category slices regardless of currency.
+- **Who-owes-whom / settlement** (`amountOwedForUser` and the settlement card): per-user balances
+  must be netted per currency; there is no meaningful cross-currency balance without conversion.

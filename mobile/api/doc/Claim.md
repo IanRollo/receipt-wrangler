@@ -32,6 +32,9 @@ Name | Type | Description | Notes
 **outstandingAmount** | **String** | effectiveClaimedAmount minus paidAmount. Negative when more was received than claimed. | 
 **daysWaiting** | **int** | Calendar days from submittedDate to today in the app time zone, when awaitingSettlement is true and submittedDate is set; otherwise absent. Never negative. | [optional] 
 **ledgerEntries** | [**BuiltList&lt;ClaimLedgerEntry&gt;**](ClaimLedgerEntry.md) | The claim's ledger, oldest first (by date, then id). Always present; empty when none. | 
+**currency** | **String** | The claim's currency: its group's base currency, which every money figure of the claim is reckoned in. A linked receipt counts at its amount when it is in that currency, at its recorded baseAmount when converted, and otherwise is unconverted (counted in unconvertedReceiptCount, left out of every figure). | [optional] 
+**unconvertedReceiptCount** | **int** | Number of linked receipts the caller may see that are unconverted | [optional] 
+**unconvertedTotals** | [**BuiltList&lt;ClaimCurrencyTotal&gt;**](ClaimCurrencyTotal.md) | The unconverted receipts' amounts per currency, by code. Always present; empty when every linked receipt counts. | [optional] 
 
 [[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
 

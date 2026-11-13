@@ -16,6 +16,8 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
   @override
   final bool? hideComments;
   @override
+  final String? baseCurrency;
+  @override
   final bool? applyDefaultCustomFieldsOnIngest;
   @override
   final ReceiptStatus? quickScanDefaultStatus;
@@ -25,6 +27,8 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
   final bool? quickScanStatusRequired;
   @override
   final ReceiptSummaryPosition? receiptSummaryPosition;
+  @override
+  final String? defaultCurrency;
   @override
   final bool? hideItemCategories;
   @override
@@ -83,11 +87,13 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
       this.receiptSummaryStatuses,
       required this.groupId,
       this.hideComments,
+      this.baseCurrency,
       this.applyDefaultCustomFieldsOnIngest,
       this.quickScanDefaultStatus,
       this.quickScanCategoriesRequired,
       this.quickScanStatusRequired,
       this.receiptSummaryPosition,
+      this.defaultCurrency,
       this.hideItemCategories,
       this.quickScanCommentRequired,
       this.hideItemTags,
@@ -130,12 +136,14 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
         receiptSummaryStatuses == other.receiptSummaryStatuses &&
         groupId == other.groupId &&
         hideComments == other.hideComments &&
+        baseCurrency == other.baseCurrency &&
         applyDefaultCustomFieldsOnIngest ==
             other.applyDefaultCustomFieldsOnIngest &&
         quickScanDefaultStatus == other.quickScanDefaultStatus &&
         quickScanCategoriesRequired == other.quickScanCategoriesRequired &&
         quickScanStatusRequired == other.quickScanStatusRequired &&
         receiptSummaryPosition == other.receiptSummaryPosition &&
+        defaultCurrency == other.defaultCurrency &&
         hideItemCategories == other.hideItemCategories &&
         quickScanCommentRequired == other.quickScanCommentRequired &&
         hideItemTags == other.hideItemTags &&
@@ -169,11 +177,13 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
     _$hash = $jc(_$hash, receiptSummaryStatuses.hashCode);
     _$hash = $jc(_$hash, groupId.hashCode);
     _$hash = $jc(_$hash, hideComments.hashCode);
+    _$hash = $jc(_$hash, baseCurrency.hashCode);
     _$hash = $jc(_$hash, applyDefaultCustomFieldsOnIngest.hashCode);
     _$hash = $jc(_$hash, quickScanDefaultStatus.hashCode);
     _$hash = $jc(_$hash, quickScanCategoriesRequired.hashCode);
     _$hash = $jc(_$hash, quickScanStatusRequired.hashCode);
     _$hash = $jc(_$hash, receiptSummaryPosition.hashCode);
+    _$hash = $jc(_$hash, defaultCurrency.hashCode);
     _$hash = $jc(_$hash, hideItemCategories.hashCode);
     _$hash = $jc(_$hash, quickScanCommentRequired.hashCode);
     _$hash = $jc(_$hash, hideItemTags.hashCode);
@@ -209,12 +219,14 @@ class _$GroupReceiptSettings extends GroupReceiptSettings {
           ..add('receiptSummaryStatuses', receiptSummaryStatuses)
           ..add('groupId', groupId)
           ..add('hideComments', hideComments)
+          ..add('baseCurrency', baseCurrency)
           ..add('applyDefaultCustomFieldsOnIngest',
               applyDefaultCustomFieldsOnIngest)
           ..add('quickScanDefaultStatus', quickScanDefaultStatus)
           ..add('quickScanCategoriesRequired', quickScanCategoriesRequired)
           ..add('quickScanStatusRequired', quickScanStatusRequired)
           ..add('receiptSummaryPosition', receiptSummaryPosition)
+          ..add('defaultCurrency', defaultCurrency)
           ..add('hideItemCategories', hideItemCategories)
           ..add('quickScanCommentRequired', quickScanCommentRequired)
           ..add('hideItemTags', hideItemTags)
@@ -272,6 +284,11 @@ class GroupReceiptSettingsBuilder
   set hideComments(covariant bool? hideComments) =>
       _$this._hideComments = hideComments;
 
+  String? _baseCurrency;
+  String? get baseCurrency => _$this._baseCurrency;
+  set baseCurrency(covariant String? baseCurrency) =>
+      _$this._baseCurrency = baseCurrency;
+
   bool? _applyDefaultCustomFieldsOnIngest;
   bool? get applyDefaultCustomFieldsOnIngest =>
       _$this._applyDefaultCustomFieldsOnIngest;
@@ -302,6 +319,11 @@ class GroupReceiptSettingsBuilder
   set receiptSummaryPosition(
           covariant ReceiptSummaryPosition? receiptSummaryPosition) =>
       _$this._receiptSummaryPosition = receiptSummaryPosition;
+
+  String? _defaultCurrency;
+  String? get defaultCurrency => _$this._defaultCurrency;
+  set defaultCurrency(covariant String? defaultCurrency) =>
+      _$this._defaultCurrency = defaultCurrency;
 
   bool? _hideItemCategories;
   bool? get hideItemCategories => _$this._hideItemCategories;
@@ -433,11 +455,13 @@ class GroupReceiptSettingsBuilder
       _receiptSummaryStatuses = $v.receiptSummaryStatuses?.toBuilder();
       _groupId = $v.groupId;
       _hideComments = $v.hideComments;
+      _baseCurrency = $v.baseCurrency;
       _applyDefaultCustomFieldsOnIngest = $v.applyDefaultCustomFieldsOnIngest;
       _quickScanDefaultStatus = $v.quickScanDefaultStatus;
       _quickScanCategoriesRequired = $v.quickScanCategoriesRequired;
       _quickScanStatusRequired = $v.quickScanStatusRequired;
       _receiptSummaryPosition = $v.receiptSummaryPosition;
+      _defaultCurrency = $v.defaultCurrency;
       _hideItemCategories = $v.hideItemCategories;
       _quickScanCommentRequired = $v.quickScanCommentRequired;
       _hideItemTags = $v.hideItemTags;
@@ -491,11 +515,13 @@ class GroupReceiptSettingsBuilder
             groupId: BuiltValueNullFieldError.checkNotNull(
                 groupId, r'GroupReceiptSettings', 'groupId'),
             hideComments: hideComments,
+            baseCurrency: baseCurrency,
             applyDefaultCustomFieldsOnIngest: applyDefaultCustomFieldsOnIngest,
             quickScanDefaultStatus: quickScanDefaultStatus,
             quickScanCategoriesRequired: quickScanCategoriesRequired,
             quickScanStatusRequired: quickScanStatusRequired,
             receiptSummaryPosition: receiptSummaryPosition,
+            defaultCurrency: defaultCurrency,
             hideItemCategories: hideItemCategories,
             quickScanCommentRequired: quickScanCommentRequired,
             hideItemTags: hideItemTags,

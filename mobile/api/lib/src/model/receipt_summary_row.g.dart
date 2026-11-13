@@ -15,6 +15,8 @@ class _$ReceiptSummaryRow extends ReceiptSummaryRow {
   final String total;
   @override
   final BuiltList<ReceiptSummaryCustomFieldTotal> customFieldTotals;
+  @override
+  final BuiltList<ReceiptSummaryCurrencyTotal>? currencyTotals;
 
   factory _$ReceiptSummaryRow(
           [void Function(ReceiptSummaryRowBuilder)? updates]) =>
@@ -24,7 +26,8 @@ class _$ReceiptSummaryRow extends ReceiptSummaryRow {
       {required this.status,
       required this.receiptCount,
       required this.total,
-      required this.customFieldTotals})
+      required this.customFieldTotals,
+      this.currencyTotals})
       : super._();
   @override
   ReceiptSummaryRow rebuild(void Function(ReceiptSummaryRowBuilder) updates) =>
@@ -41,7 +44,8 @@ class _$ReceiptSummaryRow extends ReceiptSummaryRow {
         status == other.status &&
         receiptCount == other.receiptCount &&
         total == other.total &&
-        customFieldTotals == other.customFieldTotals;
+        customFieldTotals == other.customFieldTotals &&
+        currencyTotals == other.currencyTotals;
   }
 
   @override
@@ -51,6 +55,7 @@ class _$ReceiptSummaryRow extends ReceiptSummaryRow {
     _$hash = $jc(_$hash, receiptCount.hashCode);
     _$hash = $jc(_$hash, total.hashCode);
     _$hash = $jc(_$hash, customFieldTotals.hashCode);
+    _$hash = $jc(_$hash, currencyTotals.hashCode);
     _$hash = $jf(_$hash);
     return _$hash;
   }
@@ -61,7 +66,8 @@ class _$ReceiptSummaryRow extends ReceiptSummaryRow {
           ..add('status', status)
           ..add('receiptCount', receiptCount)
           ..add('total', total)
-          ..add('customFieldTotals', customFieldTotals))
+          ..add('customFieldTotals', customFieldTotals)
+          ..add('currencyTotals', currencyTotals))
         .toString();
   }
 }
@@ -90,6 +96,13 @@ class ReceiptSummaryRowBuilder
           ListBuilder<ReceiptSummaryCustomFieldTotal>? customFieldTotals) =>
       _$this._customFieldTotals = customFieldTotals;
 
+  ListBuilder<ReceiptSummaryCurrencyTotal>? _currencyTotals;
+  ListBuilder<ReceiptSummaryCurrencyTotal> get currencyTotals =>
+      _$this._currencyTotals ??= ListBuilder<ReceiptSummaryCurrencyTotal>();
+  set currencyTotals(
+          ListBuilder<ReceiptSummaryCurrencyTotal>? currencyTotals) =>
+      _$this._currencyTotals = currencyTotals;
+
   ReceiptSummaryRowBuilder() {
     ReceiptSummaryRow._defaults(this);
   }
@@ -101,6 +114,7 @@ class ReceiptSummaryRowBuilder
       _receiptCount = $v.receiptCount;
       _total = $v.total;
       _customFieldTotals = $v.customFieldTotals.toBuilder();
+      _currencyTotals = $v.currencyTotals?.toBuilder();
       _$v = null;
     }
     return this;
@@ -131,12 +145,15 @@ class ReceiptSummaryRowBuilder
             total: BuiltValueNullFieldError.checkNotNull(
                 total, r'ReceiptSummaryRow', 'total'),
             customFieldTotals: customFieldTotals.build(),
+            currencyTotals: _currencyTotals?.build(),
           );
     } catch (_) {
       late String _$failedField;
       try {
         _$failedField = 'customFieldTotals';
         customFieldTotals.build();
+        _$failedField = 'currencyTotals';
+        _currencyTotals?.build();
       } catch (e) {
         throw BuiltValueNestedFieldError(
             r'ReceiptSummaryRow', _$failedField, e.toString());

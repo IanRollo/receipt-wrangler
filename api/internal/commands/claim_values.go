@@ -10,9 +10,9 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// claimAmountLimit is one cent above the largest value a decimal(10,2) column
-// holds. Anything at or over it would be rejected by MySQL/Postgres mid-write and
-// silently stored by SQLite, so it is refused up front instead.
+// claimAmountLimit is a policy ceiling well inside what the decimal(13,3) columns hold.
+// Anything at or over it is refused up front rather than rejected by MySQL/Postgres
+// mid-write and silently stored by SQLite.
 var claimAmountLimit = decimal.NewFromInt(100_000_000)
 
 // OptionalAmount is a money value that may be absent. It reads a JSON string or
@@ -38,8 +38,10 @@ func (amount *OptionalAmount) UnmarshalJSON(data []byte) error {
 }
 
 // validateClaimAmount reports what is wrong with an amount, or "" when it is
-// acceptable: below the column's limit, at most two decimal places, and zero or
-// more (allowZero) or greater than zero.
+// acceptable: below the column's limit, at most three decimal places (the most any
+// currency uses; the claim's base currency can be stricter, which the handlers check
+// against its exponent with currency.ValidateAmount), and zero or more (allowZero) or
+// greater than zero.
 func validateClaimAmount(value decimal.Decimal, allowZero bool) string {
 	if allowZero && value.IsNegative() {
 		return "Amount cannot be negative"
@@ -47,8 +49,8 @@ func validateClaimAmount(value decimal.Decimal, allowZero bool) string {
 	if !allowZero && !value.IsPositive() {
 		return "Amount must be greater than zero"
 	}
-	if !value.Equal(value.Round(2)) {
-		return "Amount can have at most two decimal places"
+	if !value.Equal(value.Round(3)) {
+		return "Amount can have at most three decimal places"
 	}
 	if value.GreaterThanOrEqual(claimAmountLimit) {
 		return "Amount is too large"

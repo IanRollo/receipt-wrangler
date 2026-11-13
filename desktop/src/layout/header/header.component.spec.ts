@@ -11,7 +11,7 @@ import { ToggleIsSidebarOpen } from "src/store/layout.state.actions";
 import { DirectivesModule } from "../../directives/directives.module";
 import { ApiModule, NotificationsService } from "../../open-api";
 import { SetAuthState, SetPermissions } from "../../store/auth.state.actions";
-import { SetSelectedGroupId } from "../../store/group.state.actions";
+import { SetGroups, SetSelectedGroupId } from "../../store/group.state.actions";
 import { StoreModule } from "../../store/store.module";
 import { HeaderComponent } from "./header.component";
 
@@ -139,6 +139,29 @@ describe("HeaderComponent", () => {
 
     store.dispatch(new SetSelectedGroupId("2"));
     expect(component.claimsHeaderLink()).toEqual(["/claims/group", "2"]);
+  });
+
+  describe("Processing link", () => {
+    const link = () => fixture.nativeElement.querySelector("[data-testid='header-processing-link']");
+
+    it("is hidden without group.activities.read in the selected group", async () => {
+      logIn();
+      selectGroupOne();
+      await fixture.whenStable();
+
+      expect(link()).toBeNull();
+    });
+
+    it("links to the selected group's queue", async () => {
+      logIn();
+      selectGroupOne();
+      store.dispatch(new SetGroups([{ id: 1, name: "Home", isAllGroup: false } as any]));
+      store.dispatch(new SetPermissions([], { 1: ["group.activities.read"] }));
+      await fixture.whenStable();
+
+      expect(link()).not.toBeNull();
+      expect(component.processingHeaderLink()).toEqual(["/processing/group", "1"]);
+    });
   });
 
   it("should not fetch the notification count without app.notifications.read", async () => {

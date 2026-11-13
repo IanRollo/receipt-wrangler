@@ -10,6 +10,20 @@ class _$Receipt extends Receipt {
   @override
   final String amount;
   @override
+  final String? currency;
+  @override
+  final String? baseAmount;
+  @override
+  final String? baseAmountCurrency;
+  @override
+  final String? exchangeRate;
+  @override
+  final String? exchangeRateDate;
+  @override
+  final String? exchangeRateSource;
+  @override
+  final String? conversionNote;
+  @override
   final BuiltList<Category> categories;
   @override
   final BuiltList<Comment> comments;
@@ -59,6 +73,13 @@ class _$Receipt extends Receipt {
 
   _$Receipt._(
       {required this.amount,
+      this.currency,
+      this.baseAmount,
+      this.baseAmountCurrency,
+      this.exchangeRate,
+      this.exchangeRateDate,
+      this.exchangeRateSource,
+      this.conversionNote,
       required this.categories,
       required this.comments,
       required this.customFields,
@@ -94,6 +115,13 @@ class _$Receipt extends Receipt {
     if (identical(other, this)) return true;
     return other is Receipt &&
         amount == other.amount &&
+        currency == other.currency &&
+        baseAmount == other.baseAmount &&
+        baseAmountCurrency == other.baseAmountCurrency &&
+        exchangeRate == other.exchangeRate &&
+        exchangeRateDate == other.exchangeRateDate &&
+        exchangeRateSource == other.exchangeRateSource &&
+        conversionNote == other.conversionNote &&
         categories == other.categories &&
         comments == other.comments &&
         customFields == other.customFields &&
@@ -122,6 +150,13 @@ class _$Receipt extends Receipt {
   int get hashCode {
     var _$hash = 0;
     _$hash = $jc(_$hash, amount.hashCode);
+    _$hash = $jc(_$hash, currency.hashCode);
+    _$hash = $jc(_$hash, baseAmount.hashCode);
+    _$hash = $jc(_$hash, baseAmountCurrency.hashCode);
+    _$hash = $jc(_$hash, exchangeRate.hashCode);
+    _$hash = $jc(_$hash, exchangeRateDate.hashCode);
+    _$hash = $jc(_$hash, exchangeRateSource.hashCode);
+    _$hash = $jc(_$hash, conversionNote.hashCode);
     _$hash = $jc(_$hash, categories.hashCode);
     _$hash = $jc(_$hash, comments.hashCode);
     _$hash = $jc(_$hash, customFields.hashCode);
@@ -152,6 +187,13 @@ class _$Receipt extends Receipt {
   String toString() {
     return (newBuiltValueToStringHelper(r'Receipt')
           ..add('amount', amount)
+          ..add('currency', currency)
+          ..add('baseAmount', baseAmount)
+          ..add('baseAmountCurrency', baseAmountCurrency)
+          ..add('exchangeRate', exchangeRate)
+          ..add('exchangeRateDate', exchangeRateDate)
+          ..add('exchangeRateSource', exchangeRateSource)
+          ..add('conversionNote', conversionNote)
           ..add('categories', categories)
           ..add('comments', comments)
           ..add('customFields', customFields)
@@ -184,6 +226,38 @@ class ReceiptBuilder implements Builder<Receipt, ReceiptBuilder> {
   String? _amount;
   String? get amount => _$this._amount;
   set amount(String? amount) => _$this._amount = amount;
+
+  String? _currency;
+  String? get currency => _$this._currency;
+  set currency(String? currency) => _$this._currency = currency;
+
+  String? _baseAmount;
+  String? get baseAmount => _$this._baseAmount;
+  set baseAmount(String? baseAmount) => _$this._baseAmount = baseAmount;
+
+  String? _baseAmountCurrency;
+  String? get baseAmountCurrency => _$this._baseAmountCurrency;
+  set baseAmountCurrency(String? baseAmountCurrency) =>
+      _$this._baseAmountCurrency = baseAmountCurrency;
+
+  String? _exchangeRate;
+  String? get exchangeRate => _$this._exchangeRate;
+  set exchangeRate(String? exchangeRate) => _$this._exchangeRate = exchangeRate;
+
+  String? _exchangeRateDate;
+  String? get exchangeRateDate => _$this._exchangeRateDate;
+  set exchangeRateDate(String? exchangeRateDate) =>
+      _$this._exchangeRateDate = exchangeRateDate;
+
+  String? _exchangeRateSource;
+  String? get exchangeRateSource => _$this._exchangeRateSource;
+  set exchangeRateSource(String? exchangeRateSource) =>
+      _$this._exchangeRateSource = exchangeRateSource;
+
+  String? _conversionNote;
+  String? get conversionNote => _$this._conversionNote;
+  set conversionNote(String? conversionNote) =>
+      _$this._conversionNote = conversionNote;
 
   ListBuilder<Category>? _categories;
   ListBuilder<Category> get categories =>
@@ -291,6 +365,13 @@ class ReceiptBuilder implements Builder<Receipt, ReceiptBuilder> {
     final $v = _$v;
     if ($v != null) {
       _amount = $v.amount;
+      _currency = $v.currency;
+      _baseAmount = $v.baseAmount;
+      _baseAmountCurrency = $v.baseAmountCurrency;
+      _exchangeRate = $v.exchangeRate;
+      _exchangeRateDate = $v.exchangeRateDate;
+      _exchangeRateSource = $v.exchangeRateSource;
+      _conversionNote = $v.conversionNote;
       _categories = $v.categories.toBuilder();
       _comments = $v.comments.toBuilder();
       _customFields = $v.customFields.toBuilder();
@@ -338,6 +419,13 @@ class ReceiptBuilder implements Builder<Receipt, ReceiptBuilder> {
           _$Receipt._(
             amount: BuiltValueNullFieldError.checkNotNull(
                 amount, r'Receipt', 'amount'),
+            currency: currency,
+            baseAmount: baseAmount,
+            baseAmountCurrency: baseAmountCurrency,
+            exchangeRate: exchangeRate,
+            exchangeRateDate: exchangeRateDate,
+            exchangeRateSource: exchangeRateSource,
+            conversionNote: conversionNote,
             categories: categories.build(),
             comments: comments.build(),
             customFields: customFields.build(),

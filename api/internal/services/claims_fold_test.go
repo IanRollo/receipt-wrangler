@@ -43,7 +43,7 @@ func TestFoldClaim_FiguresFromReceiptsAndLedger(t *testing.T) {
 		{EntryType: "ADJUSTMENT", Date: *claimDay(2026, 10, 3), Amount: claimAmount("1000.00")},
 	}
 
-	fold := foldClaim(claim, receipts, entries, *claimDay(2026, 10, 11))
+	fold := foldClaim(claim, receipts, entries, *claimDay(2026, 10, 11), "USD")
 	view := fold.view
 
 	checks := map[string][2]string{
@@ -83,7 +83,7 @@ func TestFoldClaim_ExplicitClaimedAmountWinsAndOverpaymentIsNegative(t *testing.
 		{EntryType: models.ClaimLedgerEntryPayment, Amount: claimAmount("120.00")},
 	}
 
-	view := foldClaim(claim, []repositories.LinkedReceipt{linkedReceipt(1, "80.00")}, entries, *claimDay(2026, 2, 1)).view
+	view := foldClaim(claim, []repositories.LinkedReceipt{linkedReceipt(1, "80.00")}, entries, *claimDay(2026, 2, 1), "USD").view
 
 	if view.EffectiveClaimedAmount != "100.00" || view.ClaimedAmount != "100.00" {
 		utils.PrintTestError(t, view.EffectiveClaimedAmount, "100.00")
@@ -104,7 +104,7 @@ func TestFoldClaim_DecimalPrecision(t *testing.T) {
 		receipts = append(receipts, linkedReceipt(i, "0.10"))
 	}
 
-	view := foldClaim(models.Claim{Status: models.ClaimStatusDraft}, receipts, nil, *claimDay(2026, 1, 1)).view
+	view := foldClaim(models.Claim{Status: models.ClaimStatusDraft}, receipts, nil, *claimDay(2026, 1, 1), "USD").view
 
 	if view.ReceiptsTotal != "1.00" {
 		utils.PrintTestError(t, view.ReceiptsTotal, "1.00")
@@ -112,7 +112,7 @@ func TestFoldClaim_DecimalPrecision(t *testing.T) {
 }
 
 func TestFoldClaim_EmptyClaimSerializesArrays(t *testing.T) {
-	view := foldClaim(models.Claim{Status: models.ClaimStatusDraft}, nil, nil, *claimDay(2026, 1, 1)).view
+	view := foldClaim(models.Claim{Status: models.ClaimStatusDraft}, nil, nil, *claimDay(2026, 1, 1), "USD").view
 
 	if view.ReceiptIds == nil || view.LedgerEntries == nil {
 		t.Errorf("receiptIds and ledgerEntries must be [] rather than null")
@@ -125,7 +125,7 @@ func TestFoldClaim_EmptyClaimSerializesArrays(t *testing.T) {
 func TestFoldClaim_FutureSubmittedDateWaitsZeroDays(t *testing.T) {
 	claim := models.Claim{Status: models.ClaimStatusSubmitted, SubmittedDate: claimDay(2026, 12, 1)}
 
-	view := foldClaim(claim, nil, nil, *claimDay(2026, 11, 1)).view
+	view := foldClaim(claim, nil, nil, *claimDay(2026, 11, 1), "USD").view
 
 	if view.DaysWaiting == nil || *view.DaysWaiting != 0 {
 		utils.PrintTestError(t, view.DaysWaiting, 0)
@@ -134,12 +134,12 @@ func TestFoldClaim_FutureSubmittedDateWaitsZeroDays(t *testing.T) {
 
 func TestBuildClaimList_SummaryCoversAwaitingClaimsOnly(t *testing.T) {
 	today := *claimDay(2026, 11, 11)
-	submitted := foldClaim(models.Claim{Status: models.ClaimStatusSubmitted, SubmittedDate: claimDay(2026, 11, 1), ClaimedAmount: claimAmount("50.00")}, nil, nil, today)
-	disputed := foldClaim(models.Claim{Status: models.ClaimStatusDisputed, SubmittedDate: claimDay(2026, 1, 1), ClaimedAmount: claimAmount("25.00")}, nil, nil, today)
-	closed := foldClaim(models.Claim{Status: models.ClaimStatusClosed, ClaimedAmount: claimAmount("1000.00")}, nil, nil, today)
-	unknown := foldClaim(models.Claim{Status: "SOMETHING_NEW", ClaimedAmount: claimAmount("1000.00")}, nil, nil, today)
+	submitted := foldClaim(models.Claim{Status: models.ClaimStatusSubmitted, SubmittedDate: claimDay(2026, 11, 1), ClaimedAmount: claimAmount("50.00")}, nil, nil, today, "USD")
+	disputed := foldClaim(models.Claim{Status: models.ClaimStatusDisputed, SubmittedDate: claimDay(2026, 1, 1), ClaimedAmount: claimAmount("25.00")}, nil, nil, today, "USD")
+	closed := foldClaim(models.Claim{Status: models.ClaimStatusClosed, ClaimedAmount: claimAmount("1000.00")}, nil, nil, today, "USD")
+	unknown := foldClaim(models.Claim{Status: "SOMETHING_NEW", ClaimedAmount: claimAmount("1000.00")}, nil, nil, today, "USD")
 
-	list := buildClaimList([]claimFold{submitted, disputed, closed, unknown}, today)
+	list := buildClaimList([]claimFold{submitted, disputed, closed, unknown}, today, "USD")
 
 	if list.Summary.ClaimCount != 4 || list.Summary.AwaitingCount != 2 {
 		utils.PrintTestError(t, list.Summary, "4 claims, 2 awaiting")
@@ -156,7 +156,7 @@ func TestBuildClaimList_SummaryCoversAwaitingClaimsOnly(t *testing.T) {
 }
 
 func TestBuildClaimList_EmptyList(t *testing.T) {
-	list := buildClaimList(nil, *claimDay(2026, 11, 11))
+	list := buildClaimList(nil, *claimDay(2026, 11, 11), "USD")
 
 	if list.Claims == nil {
 		t.Errorf("claims must be [] rather than null")

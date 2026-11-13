@@ -37,6 +37,7 @@ import 'package:openapi/src/model/chart_grouping.dart';
 import 'package:openapi/src/model/check_email_connectivity_command.dart';
 import 'package:openapi/src/model/check_receipt_processing_settings_connectivity_command.dart';
 import 'package:openapi/src/model/claim.dart';
+import 'package:openapi/src/model/claim_currency_total.dart';
 import 'package:openapi/src/model/claim_ledger_entry.dart';
 import 'package:openapi/src/model/claim_list.dart';
 import 'package:openapi/src/model/claim_list_summary.dart';
@@ -45,6 +46,7 @@ import 'package:openapi/src/model/claim_receipts_failure.dart';
 import 'package:openapi/src/model/claim_receipts_result.dart';
 import 'package:openapi/src/model/claims.dart';
 import 'package:openapi/src/model/comment.dart';
+import 'package:openapi/src/model/currency_info.dart';
 import 'package:openapi/src/model/currency_separator.dart';
 import 'package:openapi/src/model/currency_symbol_position.dart';
 import 'package:openapi/src/model/custom_field.dart';
@@ -96,6 +98,8 @@ import 'package:openapi/src/model/permission_scope.dart';
 import 'package:openapi/src/model/pie_chart_data.dart';
 import 'package:openapi/src/model/pie_chart_data_command.dart';
 import 'package:openapi/src/model/pie_chart_data_point.dart';
+import 'package:openapi/src/model/processing_queue_item.dart';
+import 'package:openapi/src/model/processing_queue_list.dart';
 import 'package:openapi/src/model/prompt.dart';
 import 'package:openapi/src/model/queue_name.dart';
 import 'package:openapi/src/model/quick_scan_default_paid_by_type.dart';
@@ -113,6 +117,7 @@ import 'package:openapi/src/model/receipt_requirements.dart';
 import 'package:openapi/src/model/receipt_status.dart';
 import 'package:openapi/src/model/receipt_summary.dart';
 import 'package:openapi/src/model/receipt_summary_command.dart';
+import 'package:openapi/src/model/receipt_summary_currency_total.dart';
 import 'package:openapi/src/model/receipt_summary_custom_field_total.dart';
 import 'package:openapi/src/model/receipt_summary_position.dart';
 import 'package:openapi/src/model/receipt_summary_row.dart';
@@ -201,6 +206,7 @@ part 'serializers.g.dart';
   CheckEmailConnectivityCommand,
   CheckReceiptProcessingSettingsConnectivityCommand,
   Claim,
+  ClaimCurrencyTotal,
   ClaimLedgerEntry,
   ClaimList,
   ClaimListSummary,
@@ -209,6 +215,7 @@ part 'serializers.g.dart';
   ClaimReceiptsResult,
   Claims,
   Comment,
+  CurrencyInfo,
   CurrencySeparator,
   CurrencySymbolPosition,
   CustomField,
@@ -260,6 +267,8 @@ part 'serializers.g.dart';
   PieChartData,
   PieChartDataCommand,
   PieChartDataPoint,
+  ProcessingQueueItem,
+  ProcessingQueueList,
   Prompt,
   QueueName,
   QuickScanDefaultPaidByType,
@@ -277,6 +286,7 @@ part 'serializers.g.dart';
   ReceiptStatus,
   ReceiptSummary,
   ReceiptSummaryCommand,
+  ReceiptSummaryCurrencyTotal,
   ReceiptSummaryCustomFieldTotal,
   ReceiptSummaryPosition,
   ReceiptSummaryRow,
@@ -387,6 +397,10 @@ Serializers serializers = (_$serializers.toBuilder()
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(Dashboard)]),
         () => ListBuilder<Dashboard>(),
+      )
+      ..addBuilderFactory(
+        const FullType(BuiltList, [FullType(CurrencyInfo)]),
+        () => ListBuilder<CurrencyInfo>(),
       )
       ..addBuilderFactory(
         const FullType(BuiltList, [FullType(int)]),

@@ -17,6 +17,7 @@ part 'receipt_summary.g.dart';
 /// * [enabled] - Whether the configuration group has the summary turned on. False comes back at a normal 200 with zeroed rows, so a client with stale group settings renders nothing rather than surfacing an error.
 /// * [configurationGroupId] - The group whose settings produced this breakdown
 /// * [position] 
+/// * [baseCurrency] - The currency the legacy row totals are reckoned in: the viewed group's base currency, or the install default under the All group.
 /// * [overall] 
 /// * [statuses] - One row per configured status, in ReceiptStatus declaration order. A configured status matching no receipt is still present, with zeroed figures. Always present; empty when no status is configured.
 @BuiltValue()
@@ -32,6 +33,10 @@ abstract class ReceiptSummary implements Built<ReceiptSummary, ReceiptSummaryBui
   @BuiltValueField(wireName: r'position')
   ReceiptSummaryPosition get position;
   // enum positionEnum {  TOP,  BOTTOM,  };
+
+  /// The currency the legacy row totals are reckoned in: the viewed group's base currency, or the install default under the All group.
+  @BuiltValueField(wireName: r'baseCurrency')
+  String? get baseCurrency;
 
   @BuiltValueField(wireName: r'overall')
   ReceiptSummaryRow get overall;
@@ -78,6 +83,13 @@ class _$ReceiptSummarySerializer implements PrimitiveSerializer<ReceiptSummary> 
       object.position,
       specifiedType: const FullType(ReceiptSummaryPosition),
     );
+    if (object.baseCurrency != null) {
+      yield r'baseCurrency';
+      yield serializers.serialize(
+        object.baseCurrency,
+        specifiedType: const FullType(String),
+      );
+    }
     yield r'overall';
     yield serializers.serialize(
       object.overall,
@@ -131,6 +143,13 @@ class _$ReceiptSummarySerializer implements PrimitiveSerializer<ReceiptSummary> 
             specifiedType: const FullType(ReceiptSummaryPosition),
           ) as ReceiptSummaryPosition;
           result.position = valueDes;
+          break;
+        case r'baseCurrency':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(String),
+          ) as String;
+          result.baseCurrency = valueDes;
           break;
         case r'overall':
           final valueDes = serializers.deserialize(

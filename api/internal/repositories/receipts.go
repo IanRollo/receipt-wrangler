@@ -127,6 +127,12 @@ func (repository ReceiptRepository) UpdateReceipt(id string, command commands.Up
 	var currentReceipt models.Receipt
 	recorder := NewReceiptChangeRecorder(userId, receiptId)
 
+	err = ResolveReceiptCurrencyForWrite(db, receiptId, &command)
+	if err != nil {
+		recorder.RecordFailure(err)
+		return models.Receipt{}, err
+	}
+
 	updatedReceipt, err := command.ToReceipt()
 	if err != nil {
 		recorder.RecordFailure(err)
@@ -171,6 +177,15 @@ func (repository ReceiptRepository) UpdateReceipt(id string, command commands.Up
 		}
 
 		txErr = tx.Session(&gorm.Session{FullSaveAssociations: true}).Model(&currentReceipt).Updates(&updatedReceipt).Error
+		if txErr != nil {
+			return txErr
+		}
+
+		// Updates skips nil fields, so a conversion the resolver cleared (the receipt is now in
+		// the group's base currency) has to be written out explicitly.
+		txErr = tx.Model(&currentReceipt).
+			Select("BaseAmount", "BaseAmountCurrency", "ExchangeRate", "ExchangeRateDate", "ExchangeRateSource").
+			Updates(&updatedReceipt).Error
 		if txErr != nil {
 			return txErr
 		}
@@ -352,6 +367,10 @@ func (repository ReceiptRepository) CreateReceipt(
 ) (models.Receipt, error) {
 	db := repository.GetDB()
 	notificationRepository := NewNotificationRepository(nil)
+	err := ResolveReceiptCurrencyForWrite(db, 0, &command)
+	if err != nil {
+		return models.Receipt{}, err
+	}
 	receipt, err := command.ToReceipt()
 	if err != nil {
 		return models.Receipt{}, err

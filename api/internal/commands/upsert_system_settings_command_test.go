@@ -422,32 +422,32 @@ func TestOmittedColumnsNamesEveryUnsentField(t *testing.T) {
 	}{
 		"all omitted": {
 			modify:   func(cmd *UpsertSystemSettingsCommand) {},
-			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "TimeZone", "SecureCookies"},
+			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "TimeZone", "SecureCookies", "DefaultCurrency"},
 		},
 		"retention sent, lifetimes omitted": {
 			modify: func(cmd *UpsertSystemSettingsCommand) {
 				cmd.TempFileRetentionHours = intPtr(48)
 			},
-			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "ServerPublicUrl", "TimeZone", "SecureCookies"},
+			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "ServerPublicUrl", "TimeZone", "SecureCookies", "DefaultCurrency"},
 		},
 		"lifetimes sent, retention omitted": {
 			modify: func(cmd *UpsertSystemSettingsCommand) {
 				cmd.RefreshTokenValidForHours = intPtr(24)
 				cmd.McpRefreshTokenValidForHours = intPtr(24)
 			},
-			expected: []string{"TempFileRetentionHours", "ServerPublicUrl", "TimeZone", "SecureCookies"},
+			expected: []string{"TempFileRetentionHours", "ServerPublicUrl", "TimeZone", "SecureCookies", "DefaultCurrency"},
 		},
 		"only time zone sent": {
 			modify: func(cmd *UpsertSystemSettingsCommand) {
 				cmd.TimeZone = stringPtr("America/New_York")
 			},
-			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "SecureCookies"},
+			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "SecureCookies", "DefaultCurrency"},
 		},
 		"only secure cookies sent, as false": {
 			modify: func(cmd *UpsertSystemSettingsCommand) {
 				cmd.SecureCookies = boolPtr(false)
 			},
-			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "TimeZone"},
+			expected: []string{"RefreshTokenValidForHours", "McpRefreshTokenValidForHours", "TempFileRetentionHours", "ServerPublicUrl", "TimeZone", "DefaultCurrency"},
 		},
 		"all sent": {
 			modify: func(cmd *UpsertSystemSettingsCommand) {
@@ -457,6 +457,7 @@ func TestOmittedColumnsNamesEveryUnsentField(t *testing.T) {
 				cmd.ServerPublicUrl = stringPtr("https://receipts.example.com")
 				cmd.TimeZone = stringPtr("UTC")
 				cmd.SecureCookies = boolPtr(true)
+				cmd.DefaultCurrency = stringPtr("USD")
 			},
 			expected: []string{},
 		},

@@ -13,6 +13,7 @@ import 'package:openapi/src/api/api_key_api.dart';
 import 'package:openapi/src/api/auth_api.dart';
 import 'package:openapi/src/api/category_api.dart';
 import 'package:openapi/src/api/comment_api.dart';
+import 'package:openapi/src/api/currency_api.dart';
 import 'package:openapi/src/api/custom_field_api.dart';
 import 'package:openapi/src/api/dashboard_api.dart';
 import 'package:openapi/src/api/export_api.dart';
@@ -23,6 +24,7 @@ import 'package:openapi/src/api/notifications_api.dart';
 import 'package:openapi/src/api/oidc_api.dart';
 import 'package:openapi/src/api/oidc_provider_api.dart';
 import 'package:openapi/src/api/permission_api.dart';
+import 'package:openapi/src/api/processing_queue_api.dart';
 import 'package:openapi/src/api/prompt_api.dart';
 import 'package:openapi/src/api/receipt_api.dart';
 import 'package:openapi/src/api/receipt_image_api.dart';
@@ -117,6 +119,12 @@ class Openapi {
     return CommentApi(dio, serializers);
   }
 
+  /// Get CurrencyApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  CurrencyApi getCurrencyApi() {
+    return CurrencyApi(dio, serializers);
+  }
+
   /// Get CustomFieldApi instance, base route and serializer can be overridden by a given but be careful,
   /// by doing that all interceptors will not be executed
   CustomFieldApi getCustomFieldApi() {
@@ -175,6 +183,12 @@ class Openapi {
   /// by doing that all interceptors will not be executed
   PermissionApi getPermissionApi() {
     return PermissionApi(dio, serializers);
+  }
+
+  /// Get ProcessingQueueApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ProcessingQueueApi getProcessingQueueApi() {
+    return ProcessingQueueApi(dio, serializers);
   }
 
   /// Get PromptApi instance, base route and serializer can be overridden by a given but be careful,

@@ -4,7 +4,7 @@ import "github.com/shopspring/decimal"
 
 type Item struct {
 	BaseModel
-	Amount          decimal.Decimal `gorm:"not null" json:"amount" sql:"type:decimal(20,3);"`
+	Amount          decimal.Decimal `gorm:"type:decimal(13,3);not null" json:"amount"`
 	ChargedToUser   User            `json:"-"`
 	ChargedToUserId *uint           `json:"chargedToUserId"`
 	IsTaxed         bool            `gorm:"not null"`

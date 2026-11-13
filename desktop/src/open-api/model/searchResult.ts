@@ -20,6 +20,10 @@ export interface SearchResult {
     receiptStatus?: ReceiptStatus;
     paidByUserId?: number;
     createdAt: string;
+    /**
+     * ISO 4217 currency code of the receipt\'s amount
+     */
+    currency?: string;
 }
 export namespace SearchResult {
 }

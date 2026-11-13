@@ -15,6 +15,14 @@ Features this fork means to explore, and what has been built.
   carrying a SHA-256 for every file. This delivers items 1 and 2 below for claimed receipts; the
   plain receipt export is unchanged.
 
+- **Multicurrency, slice A** (branch `multicurrency`, 2026-11-12). Backend only so far: an explicit
+  ISO 4217 currency on every receipt (request, else group default, else install default), amounts
+  validated by the currency's exponent, a recorded conversion (base amount, rate, date, source) kept
+  as evidence, the Receipt Summary's legacy total restricted to the base currency with per-currency
+  totals beside it, claims reckoned in the group's base currency with unconverted receipts set
+  aside, and the claim packet and CSV showing all of it. See item 4 and `api/CLAUDE.md` →
+  "Multicurrency (fork feature)".
+
 **Why this fork exists:** a personal record of payments that can be handed over as proof,
 exact transactions with their receipt images, independent of the system of whoever is disputing
 them. Features are judged by how well they produce that evidence.
@@ -69,6 +77,24 @@ Likely phases:
 Touches all three components plus a `swagger.yml` change with both clients regenerated in the same
 change. Rough size: "record it + group totals by currency" is a week or so. Conversion is extra.
 
+**Slice A (backend, built):** the currency per receipt with the default chain, a `GET /currency`
+table, exponent validation and `decimal(13,3)` storage, the AI prompt returning the currency (and
+the stored default prompt upgraded when unedited), the recorded conversion with derivation and a
+`conversionNote`, the backfill of existing receipts, the Receipt Summary split by currency, claims
+reckoned in the base currency with an unconverted set, the packet and CSV columns, history entries.
+Also the "Convert (optional)" phase above, minus a rate source: the user types the rate or the
+amount charged; nothing is fetched.
+
+**Still to do:**
+
+- Desktop UI for all of the above (in progress), and mobile (only the regenerated client so far).
+- **Slice B:** the Report Builder (a `currency` dimension, per-currency sums, 3-place split
+  scale), the dashboard pie chart, and who-owes-whom (netted per currency). These still sum bare
+  amounts.
+- A rate source, if one is ever wanted; custom CURRENCY field values still have no currency of
+  their own (they inherit the receipt's in the summary and packet).
+- Re-deriving stored conversions if a group's base currency is changed.
+
 ## 5. Review queue for uncertain scans
 
 When a quick scan or email upload can't confidently read something (an unclear currency, a smudged
@@ -100,6 +126,65 @@ Likely phases:
   prompt (the true "ask back").
 
 Pairs naturally with multicurrency (item 4): "currency unclear" is the first flag to build.
+
+## 6. Processing queue for quick scans and email uploads
+
+A quick-added receipt disappears until it is finished: there is nowhere to see that it is waiting,
+being read, retrying after an error, or stuck. Wanted: a page listing every upload still in flight
+or failed, with its state, its image, the error if any, and a resubmit button.
+
+What already exists:
+
+- **Nothing is recorded while a scan runs.** `wranglerasynq/quick_scan_handler.go` calls
+  `ReceiptService.QuickScan`, and the `system_tasks` rows (QUICK_SCAN, OCR_PROCESSING,
+  CHAT_COMPLETION) are written as each step **finishes**. `SystemTaskStatus` is only `SUCCEEDED` /
+  `FAILED`, so "queued" and "in progress" have no row to show.
+- **The in-flight state lives in Redis.** Asynq already knows every task's state (pending, active,
+  retry with its next attempt time and last error, archived), and the code already uses
+  `asynq.Inspector` (`wranglerasynq/inspector.go`, `source_file.go`).
+- **Failures are already recoverable.** "Failed Uploads Keep Their Image" (root `CLAUDE.md`): a failed
+  activity keeps its source file, offers preview/download, and an archived task can be rerun
+  (`canBeRestarted`). Today that is reached through the group activity feed and System Tasks, mixed
+  in with everything else.
+
+Likely shape:
+
+- **Read the queue from asynq, not from new DB rows.** A new endpoint lists the quick-scan and email
+  tasks in the pending, active, retry and archived sets, decodes each payload for its group,
+  uploader and original file name, and filters to what the caller may see (the task's group, as the
+  activity feed already judges it). Each row: state, uploaded at, file name, attempt count, next
+  retry, last error, and links to preview the image and to rerun.
+- **Do not add `QUEUED` / `IN_PROGRESS` to `SystemTaskStatus`.** It is a closed enum on the wire;
+  a new value is the released-Android-build outage described in `CLAUDE.md`. The queue's own state
+  should be a **plain string** on a new schema instead.
+- **Resubmit reuses the existing rerun**, which already enforces `Archived` and needs the source
+  file. A task still in the retry set could get a "retry now" (`Inspector.RunTask`) as well.
+- **Desktop:** a "Processing" page (or a panel on the dashboard) that polls every few seconds while
+  anything is in flight, plus a count badge in the header. Mobile could follow, since the person
+  quick-adding is often on the phone.
+- **Limit to note:** succeeded quick-scan tasks leave Redis immediately (no `asynq.Retention` on
+  that queue), so the queue shows only unfinished and failed work. Finished receipts are already in
+  the receipts list; this page is for what is not.
+
+Rough size: backend endpoint and desktop page in 2-3 days; mobile extra.
+
+**Status: backend built (2026-11-12); the desktop page is next.** `GET /processingQueue/group/{groupId}`
+lists the quick-scan and email tasks in asynq's pending, scheduled, active, retry and archived sets, with
+a plain-string state (`QUEUED` / `PROCESSING` / `RETRYING` / `FAILED`), attempt counts, next retry, last
+error and whether the file and a rerun are available. It is gated by the activity feed's own permissions
+in each item's group. Preview, download and "retry now" are keyed by queue and asynq task id, not system
+task id. See `api/CLAUDE.md` → "Processing queue (fork feature)". Corrections to the plan above:
+
+- **The existing preview/download/rerun routes are not enough.** They address a `system_tasks` row, and
+  a pending or active task has none, nor does one that fails before any AI step (for example no
+  receipt processing settings configured). Hence the `/processingQueue/task/{queue}/{taskId}/...` routes;
+  `systemTaskId` is on an item only when a row exists.
+- **"Uploaded at" is not recorded by asynq.** It is the stored file's modification time.
+- **A succeeded quick scan leaves Redis at once, but a succeeded email task lingers 6 hours**
+  (`completedTaskRetention`); the queue deliberately skips completed tasks, so neither shows.
+- **Retry now fits cleanly** (`RETRYING` only moves the attempt forward; `FAILED` follows the rerun
+  endpoint's rules), so it was built rather than left out.
+- At most 100 tasks are read per queue state, and a response flag `truncated` says when that bit.
 
 ## Considered and deferred: Google Drive mirror
 

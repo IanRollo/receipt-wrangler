@@ -81,6 +81,7 @@ Class | Method | HTTP request | Description
 [*CategoryApi*](doc/CategoryApi.md) | [**updateCategory**](doc/CategoryApi.md#updatecategory) | **PUT** /category/{categoryId} | Update category
 [*CommentApi*](doc/CommentApi.md) | [**addComment**](doc/CommentApi.md#addcomment) | **POST** /comment/ | Add comment
 [*CommentApi*](doc/CommentApi.md) | [**deleteComment**](doc/CommentApi.md#deletecomment) | **DELETE** /comment/{commentId} | Delete comment
+[*CurrencyApi*](doc/CurrencyApi.md) | [**getCurrencies**](doc/CurrencyApi.md#getcurrencies) | **GET** /currency | Get the currency table
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**createCustomField**](doc/CustomFieldApi.md#createcustomfield) | **POST** /customField/ | Create custom field
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**deleteCustomField**](doc/CustomFieldApi.md#deletecustomfield) | **DELETE** /customField/{customFieldId} | Delete custom field
 [*CustomFieldApi*](doc/CustomFieldApi.md) | [**getCustomFieldById**](doc/CustomFieldApi.md#getcustomfieldbyid) | **GET** /customField/{customFieldId} | Get custom field
@@ -122,6 +123,10 @@ Class | Method | HTTP request | Description
 [*OidcProviderApi*](doc/OidcProviderApi.md) | [**getPagedOidcProviders**](doc/OidcProviderApi.md#getpagedoidcproviders) | **POST** /oidcProvider/getPagedOidcProviders | Get paged OIDC providers
 [*OidcProviderApi*](doc/OidcProviderApi.md) | [**updateOidcProvider**](doc/OidcProviderApi.md#updateoidcprovider) | **PUT** /oidcProvider/{oidcProviderId} | Update an OIDC provider
 [*PermissionApi*](doc/PermissionApi.md) | [**getPermissions**](doc/PermissionApi.md#getpermissions) | **GET** /permission | List all permission descriptors
+[*ProcessingQueueApi*](doc/ProcessingQueueApi.md) | [**downloadProcessingQueueTaskSourceFile**](doc/ProcessingQueueApi.md#downloadprocessingqueuetasksourcefile) | **GET** /processingQueue/task/{queue}/{taskId}/sourceFile/download | Download a queued upload&#39;s source file
+[*ProcessingQueueApi*](doc/ProcessingQueueApi.md) | [**getProcessingQueueForGroup**](doc/ProcessingQueueApi.md#getprocessingqueueforgroup) | **GET** /processingQueue/group/{groupId} | Get the processing queue for a group
+[*ProcessingQueueApi*](doc/ProcessingQueueApi.md) | [**getProcessingQueueTaskSourceFile**](doc/ProcessingQueueApi.md#getprocessingqueuetasksourcefile) | **GET** /processingQueue/task/{queue}/{taskId}/sourceFile | Get a queued upload&#39;s source file
+[*ProcessingQueueApi*](doc/ProcessingQueueApi.md) | [**retryProcessingQueueTask**](doc/ProcessingQueueApi.md#retryprocessingqueuetask) | **POST** /processingQueue/task/{queue}/{taskId}/retry | Retry a queued upload now
 [*PromptApi*](doc/PromptApi.md) | [**createDefaultPrompt**](doc/PromptApi.md#createdefaultprompt) | **POST** /prompt/createDefaultPrompt | Create default prompt
 [*PromptApi*](doc/PromptApi.md) | [**createPrompt**](doc/PromptApi.md#createprompt) | **POST** /prompt/ | Create prompt
 [*PromptApi*](doc/PromptApi.md) | [**deletePromptById**](doc/PromptApi.md#deletepromptbyid) | **DELETE** /prompt/{id} | Delete prompt by id
@@ -247,6 +252,7 @@ Class | Method | HTTP request | Description
  - [CheckEmailConnectivityCommand](doc/CheckEmailConnectivityCommand.md)
  - [CheckReceiptProcessingSettingsConnectivityCommand](doc/CheckReceiptProcessingSettingsConnectivityCommand.md)
  - [Claim](doc/Claim.md)
+ - [ClaimCurrencyTotal](doc/ClaimCurrencyTotal.md)
  - [ClaimLedgerEntry](doc/ClaimLedgerEntry.md)
  - [ClaimList](doc/ClaimList.md)
  - [ClaimListSummary](doc/ClaimListSummary.md)
@@ -255,6 +261,7 @@ Class | Method | HTTP request | Description
  - [ClaimReceiptsResult](doc/ClaimReceiptsResult.md)
  - [Claims](doc/Claims.md)
  - [Comment](doc/Comment.md)
+ - [CurrencyInfo](doc/CurrencyInfo.md)
  - [CurrencySeparator](doc/CurrencySeparator.md)
  - [CurrencySymbolPosition](doc/CurrencySymbolPosition.md)
  - [CustomField](doc/CustomField.md)
@@ -306,6 +313,8 @@ Class | Method | HTTP request | Description
  - [PieChartData](doc/PieChartData.md)
  - [PieChartDataCommand](doc/PieChartDataCommand.md)
  - [PieChartDataPoint](doc/PieChartDataPoint.md)
+ - [ProcessingQueueItem](doc/ProcessingQueueItem.md)
+ - [ProcessingQueueList](doc/ProcessingQueueList.md)
  - [Prompt](doc/Prompt.md)
  - [QueueName](doc/QueueName.md)
  - [QuickScanDefaultPaidByType](doc/QuickScanDefaultPaidByType.md)
@@ -323,6 +332,7 @@ Class | Method | HTTP request | Description
  - [ReceiptStatus](doc/ReceiptStatus.md)
  - [ReceiptSummary](doc/ReceiptSummary.md)
  - [ReceiptSummaryCommand](doc/ReceiptSummaryCommand.md)
+ - [ReceiptSummaryCurrencyTotal](doc/ReceiptSummaryCurrencyTotal.md)
  - [ReceiptSummaryCustomFieldTotal](doc/ReceiptSummaryCustomFieldTotal.md)
  - [ReceiptSummaryPosition](doc/ReceiptSummaryPosition.md)
  - [ReceiptSummaryRow](doc/ReceiptSummaryRow.md)

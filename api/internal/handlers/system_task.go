@@ -296,44 +296,7 @@ func GetSystemTaskSourceFile(w http.ResponseWriter, r *http.Request) {
 				return 0, nil
 			}
 
-			fileRepository := repositories.NewFileRepository(nil)
-
-			// Prefer the already-converted OCR copy. Converting the original
-			// instead can mean rasterizing a multi-page PDF at the configured DPI
-			// inside this request.
-			pathToRead := sourceFile.PreviewPath
-			if len(pathToRead) == 0 || !utils.FileExists(pathToRead) {
-				pathToRead = sourceFile.Path
-			}
-
-			// os.ReadFile, never utils.ReadFile: that one returns (nil, nil) on a
-			// read error, which would serve an empty image as a success.
-			fileBytes, err := os.ReadFile(pathToRead)
-			if err != nil {
-				return http.StatusInternalServerError, stacktrace.WithStack(err)
-			}
-
-			// BuildDisplayImageString, never BuildEncodedImageString: a quick scan's
-			// upload is whatever the user picked, and the uploader accepts PDF and
-			// HEIC. Encoding those unconverted yields a data URI the browser cannot
-			// render — silently, since GetFileType labels a PDF image/jpeg anyway.
-			encodedImage, err := fileRepository.BuildDisplayImageString(fileBytes)
-			if err != nil {
-				return http.StatusInternalServerError, stacktrace.WithStack(err)
-			}
-
-			responseBytes, err := utils.MarshalResponseData(structs.SystemTaskSourceFileView{
-				Name:         sourceFile.FileName,
-				EncodedImage: encodedImage,
-			})
-			if err != nil {
-				return http.StatusInternalServerError, stacktrace.WithStack(err)
-			}
-
-			w.WriteHeader(http.StatusOK)
-			w.Write(responseBytes)
-
-			return 0, nil
+			return writeSourceFilePreview(w, sourceFile)
 		},
 	}
 
@@ -364,24 +327,7 @@ func DownloadSystemTaskSourceFile(w http.ResponseWriter, r *http.Request) {
 				return 0, nil
 			}
 
-			// Sanitized because an email attachment's name comes from a MIME header,
-			// then formatted by mime.FormatMediaType rather than concatenated: a name
-			// containing a quote would otherwise close the quoted value early and
-			// truncate what the client reads back off the header.
-			fileName := utils.SanitizeFileName(sourceFile.FileName)
-			if len(fileName) == 0 {
-				fileName = filepath.Base(sourceFile.Path)
-			}
-
-			w.Header().Set(
-				"Content-Disposition",
-				mime.FormatMediaType("attachment", map[string]string{"filename": fileName}),
-			)
-			http.ServeFile(w, r, sourceFile.Path)
-
-			// Streaming has begun, so returning an error here would write an error
-			// body over the file.
-			return 0, nil
+			return writeSourceFileDownload(w, r, sourceFile)
 		},
 	}
 
@@ -525,4 +471,69 @@ func enforceActivityActorVisible(
 	}
 
 	return false
+}
+
+// writeSourceFilePreview serves an already-authorized source file converted for display.
+// Shared by the activity routes and the processing queue routes.
+func writeSourceFilePreview(w http.ResponseWriter, sourceFile wranglerasynq.SystemTaskSourceFile) (int, error) {
+	fileRepository := repositories.NewFileRepository(nil)
+
+	// Prefer the already-converted OCR copy. Converting the original
+	// instead can mean rasterizing a multi-page PDF at the configured DPI
+	// inside this request.
+	pathToRead := sourceFile.PreviewPath
+	if len(pathToRead) == 0 || !utils.FileExists(pathToRead) {
+		pathToRead = sourceFile.Path
+	}
+
+	// os.ReadFile, never utils.ReadFile: that one returns (nil, nil) on a
+	// read error, which would serve an empty image as a success.
+	fileBytes, err := os.ReadFile(pathToRead)
+	if err != nil {
+		return http.StatusInternalServerError, stacktrace.WithStack(err)
+	}
+
+	// BuildDisplayImageString, never BuildEncodedImageString: a quick scan's
+	// upload is whatever the user picked, and the uploader accepts PDF and
+	// HEIC. Encoding those unconverted yields a data URI the browser cannot
+	// render — silently, since GetFileType labels a PDF image/jpeg anyway.
+	encodedImage, err := fileRepository.BuildDisplayImageString(fileBytes)
+	if err != nil {
+		return http.StatusInternalServerError, stacktrace.WithStack(err)
+	}
+
+	responseBytes, err := utils.MarshalResponseData(structs.SystemTaskSourceFileView{
+		Name:         sourceFile.FileName,
+		EncodedImage: encodedImage,
+	})
+	if err != nil {
+		return http.StatusInternalServerError, stacktrace.WithStack(err)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseBytes)
+
+	return 0, nil
+}
+
+// writeSourceFileDownload serves an already-authorized source file verbatim.
+func writeSourceFileDownload(w http.ResponseWriter, r *http.Request, sourceFile wranglerasynq.SystemTaskSourceFile) (int, error) {
+	// Sanitized because an email attachment's name comes from a MIME header,
+	// then formatted by mime.FormatMediaType rather than concatenated: a name
+	// containing a quote would otherwise close the quoted value early and
+	// truncate what the client reads back off the header.
+	fileName := utils.SanitizeFileName(sourceFile.FileName)
+	if len(fileName) == 0 {
+		fileName = filepath.Base(sourceFile.Path)
+	}
+
+	w.Header().Set(
+		"Content-Disposition",
+		mime.FormatMediaType("attachment", map[string]string{"filename": fileName}),
+	)
+	http.ServeFile(w, r, sourceFile.Path)
+
+	// Streaming has begun, so returning an error here would write an error
+	// body over the file.
+	return 0, nil
 }

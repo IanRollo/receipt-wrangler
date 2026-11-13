@@ -208,6 +208,8 @@ func (service ClaimPacketService) BuildClaimPacket(ctx context.Context, userId u
 		now:       now,
 		username:  user.Username,
 		currency:  packetCurrencyFormat(settings),
+
+		installCurrency: repositories.ResolveInstallCurrency(settings.DefaultCurrency),
 		zip:       newPacketZip(file, now),
 		manifest:  claimPacketManifest{Files: []claimPacketManifestFile{}, MissingImages: []claimPacketMissingImage{}},
 		imageName: make(map[uint][]string, len(receipts)),
@@ -326,6 +328,9 @@ type claimPacketBuilder struct {
 	now       time.Time
 	username  string
 	currency  reporting.CurrencyFormat
+	// installCurrency is the install default currency, the one the app's own currency
+	// display (symbol, separators) belongs to; see moneyIn.
+	installCurrency string
 	zip       *packetZip
 	manifest  claimPacketManifest
 	imageName map[uint][]string
@@ -366,7 +371,8 @@ func (builder *claimPacketBuilder) build() error {
 // receiptSection reads, stores and embeds each of the receipt's images, and
 // lays out its section of the PDF.
 func (builder *claimPacketBuilder) receiptSection(receipt models.Receipt) (packetReceiptSection, error) {
-	section := buildPacketReceiptSection(receipt, builder.location, builder.money)
+	section := buildPacketReceiptSection(receipt, builder.location, builder.moneyFor(receipt))
+	builder.addConversionFields(&section, receipt)
 
 	names := make([]string, 0, len(receipt.ImageFiles))
 	for index, file := range receipt.ImageFiles {

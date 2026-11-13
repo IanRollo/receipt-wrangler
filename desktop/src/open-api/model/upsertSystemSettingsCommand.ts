@@ -91,6 +91,10 @@ export interface UpsertSystemSettingsCommand {
      */
     timeZone?: string;
     /**
+     * The install\'s default ISO 4217 currency (an unknown code is a 400 under the defaultCurrency key). Omit the key entirely to leave the currently configured value unchanged.
+     */
+    defaultCurrency?: string;
+    /**
      * Marks every cookie the server sets as Secure. Only turn it on when the app is served over HTTPS: a browser drops a Secure cookie set over plain HTTP, which breaks login. Omit the key entirely to leave the currently configured value unchanged.
      */
     secureCookies?: boolean;

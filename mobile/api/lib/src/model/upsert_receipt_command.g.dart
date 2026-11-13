@@ -12,6 +12,16 @@ class _$UpsertReceiptCommand extends UpsertReceiptCommand {
   @override
   final String amount;
   @override
+  final String? currency;
+  @override
+  final String? baseAmount;
+  @override
+  final String? exchangeRate;
+  @override
+  final String? exchangeRateDate;
+  @override
+  final String? exchangeRateSource;
+  @override
   final String date;
   @override
   final int groupId;
@@ -37,6 +47,11 @@ class _$UpsertReceiptCommand extends UpsertReceiptCommand {
   _$UpsertReceiptCommand._(
       {required this.name,
       required this.amount,
+      this.currency,
+      this.baseAmount,
+      this.exchangeRate,
+      this.exchangeRateDate,
+      this.exchangeRateSource,
       required this.date,
       required this.groupId,
       required this.paidByUserId,
@@ -62,6 +77,11 @@ class _$UpsertReceiptCommand extends UpsertReceiptCommand {
     return other is UpsertReceiptCommand &&
         name == other.name &&
         amount == other.amount &&
+        currency == other.currency &&
+        baseAmount == other.baseAmount &&
+        exchangeRate == other.exchangeRate &&
+        exchangeRateDate == other.exchangeRateDate &&
+        exchangeRateSource == other.exchangeRateSource &&
         date == other.date &&
         groupId == other.groupId &&
         paidByUserId == other.paidByUserId &&
@@ -78,6 +98,11 @@ class _$UpsertReceiptCommand extends UpsertReceiptCommand {
     var _$hash = 0;
     _$hash = $jc(_$hash, name.hashCode);
     _$hash = $jc(_$hash, amount.hashCode);
+    _$hash = $jc(_$hash, currency.hashCode);
+    _$hash = $jc(_$hash, baseAmount.hashCode);
+    _$hash = $jc(_$hash, exchangeRate.hashCode);
+    _$hash = $jc(_$hash, exchangeRateDate.hashCode);
+    _$hash = $jc(_$hash, exchangeRateSource.hashCode);
     _$hash = $jc(_$hash, date.hashCode);
     _$hash = $jc(_$hash, groupId.hashCode);
     _$hash = $jc(_$hash, paidByUserId.hashCode);
@@ -96,6 +121,11 @@ class _$UpsertReceiptCommand extends UpsertReceiptCommand {
     return (newBuiltValueToStringHelper(r'UpsertReceiptCommand')
           ..add('name', name)
           ..add('amount', amount)
+          ..add('currency', currency)
+          ..add('baseAmount', baseAmount)
+          ..add('exchangeRate', exchangeRate)
+          ..add('exchangeRateDate', exchangeRateDate)
+          ..add('exchangeRateSource', exchangeRateSource)
           ..add('date', date)
           ..add('groupId', groupId)
           ..add('paidByUserId', paidByUserId)
@@ -120,6 +150,28 @@ class UpsertReceiptCommandBuilder
   String? _amount;
   String? get amount => _$this._amount;
   set amount(String? amount) => _$this._amount = amount;
+
+  String? _currency;
+  String? get currency => _$this._currency;
+  set currency(String? currency) => _$this._currency = currency;
+
+  String? _baseAmount;
+  String? get baseAmount => _$this._baseAmount;
+  set baseAmount(String? baseAmount) => _$this._baseAmount = baseAmount;
+
+  String? _exchangeRate;
+  String? get exchangeRate => _$this._exchangeRate;
+  set exchangeRate(String? exchangeRate) => _$this._exchangeRate = exchangeRate;
+
+  String? _exchangeRateDate;
+  String? get exchangeRateDate => _$this._exchangeRateDate;
+  set exchangeRateDate(String? exchangeRateDate) =>
+      _$this._exchangeRateDate = exchangeRateDate;
+
+  String? _exchangeRateSource;
+  String? get exchangeRateSource => _$this._exchangeRateSource;
+  set exchangeRateSource(String? exchangeRateSource) =>
+      _$this._exchangeRateSource = exchangeRateSource;
 
   String? _date;
   String? get date => _$this._date;
@@ -175,6 +227,11 @@ class UpsertReceiptCommandBuilder
     if ($v != null) {
       _name = $v.name;
       _amount = $v.amount;
+      _currency = $v.currency;
+      _baseAmount = $v.baseAmount;
+      _exchangeRate = $v.exchangeRate;
+      _exchangeRateDate = $v.exchangeRateDate;
+      _exchangeRateSource = $v.exchangeRateSource;
       _date = $v.date;
       _groupId = $v.groupId;
       _paidByUserId = $v.paidByUserId;
@@ -211,6 +268,11 @@ class UpsertReceiptCommandBuilder
                 name, r'UpsertReceiptCommand', 'name'),
             amount: BuiltValueNullFieldError.checkNotNull(
                 amount, r'UpsertReceiptCommand', 'amount'),
+            currency: currency,
+            baseAmount: baseAmount,
+            exchangeRate: exchangeRate,
+            exchangeRateDate: exchangeRateDate,
+            exchangeRateSource: exchangeRateSource,
             date: BuiltValueNullFieldError.checkNotNull(
                 date, r'UpsertReceiptCommand', 'date'),
             groupId: BuiltValueNullFieldError.checkNotNull(

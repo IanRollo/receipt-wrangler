@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"sort"
 
 	"gorm.io/gorm"
 	"receipt-wrangler/api/internal/commands"
@@ -84,10 +85,17 @@ func (service ReceiptSummaryService) GetReceiptSummary(
 		return structs.ReceiptSummary{}, err
 	}
 
+	baseCurrency, err := service.resolveBaseCurrency(uintGroupId)
+	if err != nil {
+		return structs.ReceiptSummary{}, err
+	}
+
 	// The off state costs one settings read and no receipt query. Every install that
 	// has not opted in pays exactly this.
 	if !settings.ReceiptSummaryEnabled {
-		return emptyReceiptSummary(configurationGroupId, settings.ReceiptSummaryPosition), nil
+		summary := emptyReceiptSummary(configurationGroupId, settings.ReceiptSummaryPosition)
+		summary.BaseCurrency = baseCurrency
+		return summary, nil
 	}
 
 	fieldNames, fieldIds, err := service.resolveSummaryFields(settings)
@@ -107,7 +115,23 @@ func (service ReceiptSummaryService) GetReceiptSummary(
 		fieldNames,
 		configurationGroupId,
 		settings.ReceiptSummaryPosition,
+		baseCurrency,
 	), nil
+}
+
+// resolveBaseCurrency is the currency the legacy totals are reckoned in: the viewed group's
+// base currency, or the install default under the synthetic All group, which spans groups
+// with different bases and has none of its own.
+func (service ReceiptSummaryService) resolveBaseCurrency(viewedGroupId uint) (string, error) {
+	isAllGroup, err := repositories.NewGroupRepository(service.TX).IsAllGroup(viewedGroupId)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return "", err
+	}
+	if isAllGroup {
+		return repositories.InstallDefaultCurrency(service.TX), nil
+	}
+
+	return repositories.GroupBaseCurrency(service.TX, viewedGroupId), nil
 }
 
 // resolveConfigurationGroupId picks the group whose settings shape the breakdown.
@@ -258,23 +282,56 @@ func (service ReceiptSummaryService) fetchReceipts(
 }
 
 // summaryAccumulator is one row under construction.
+//
+// total and fieldTotals are the legacy figures and cover only baseCurrency receipts;
+// byCurrency holds the same figures for every currency present (multicurrency, fork feature).
 type summaryAccumulator struct {
 	receiptCount int64
 	total        decimal.Decimal
 	fieldTotals  map[uint]decimal.Decimal
+	fieldIds     []uint
+	baseCurrency string
+	byCurrency   map[string]*summaryAccumulator
 }
 
-func newSummaryAccumulator(fieldIds []uint) *summaryAccumulator {
+func newSummaryAccumulator(fieldIds []uint, baseCurrency string) *summaryAccumulator {
 	fieldTotals := make(map[uint]decimal.Decimal, len(fieldIds))
 	for _, fieldId := range fieldIds {
 		fieldTotals[fieldId] = decimal.Zero
 	}
 
-	return &summaryAccumulator{total: decimal.Zero, fieldTotals: fieldTotals}
+	return &summaryAccumulator{
+		total:        decimal.Zero,
+		fieldTotals:  fieldTotals,
+		fieldIds:     fieldIds,
+		baseCurrency: baseCurrency,
+		byCurrency:   map[string]*summaryAccumulator{},
+	}
 }
 
 func (accumulator *summaryAccumulator) add(receipt models.Receipt, fieldValues map[uint]decimal.Decimal) {
 	accumulator.receiptCount++
+
+	code := receipt.Currency
+	if code == "" {
+		code = accumulator.baseCurrency
+	}
+
+	currencyRow, seen := accumulator.byCurrency[code]
+	if !seen {
+		currencyRow = newSummaryAccumulator(accumulator.fieldIds, accumulator.baseCurrency)
+		accumulator.byCurrency[code] = currencyRow
+	}
+	currencyRow.receiptCount++
+	currencyRow.addAmounts(receipt, fieldValues)
+
+	if code == accumulator.baseCurrency {
+		accumulator.addAmounts(receipt, fieldValues)
+	}
+}
+
+// addAmounts folds a receipt's money into this accumulator, whatever its currency.
+func (accumulator *summaryAccumulator) addAmounts(receipt models.Receipt, fieldValues map[uint]decimal.Decimal) {
 	accumulator.total = accumulator.total.Add(receipt.Amount)
 
 	for fieldId, value := range fieldValues {
@@ -300,12 +357,13 @@ func (service ReceiptSummaryService) fold(
 	fieldNames map[uint]string,
 	configurationGroupId uint,
 	position models.ReceiptSummaryPosition,
+	baseCurrency string,
 ) structs.ReceiptSummary {
-	overall := newSummaryAccumulator(fieldIds)
+	overall := newSummaryAccumulator(fieldIds, baseCurrency)
 
 	buckets := make(map[models.ReceiptStatus]*summaryAccumulator, len(statuses))
 	for _, status := range statuses {
-		buckets[status] = newSummaryAccumulator(fieldIds)
+		buckets[status] = newSummaryAccumulator(fieldIds, baseCurrency)
 	}
 
 	for _, receipt := range receipts {
@@ -326,6 +384,7 @@ func (service ReceiptSummaryService) fold(
 		Enabled:              true,
 		ConfigurationGroupId: configurationGroupId,
 		Position:             position.OrDefault(),
+		BaseCurrency:         baseCurrency,
 		Overall:              overall.toRow("", fieldIds, fieldNames),
 		Statuses:             rows,
 	}
@@ -372,21 +431,52 @@ func (accumulator *summaryAccumulator) toRow(
 ) structs.ReceiptSummaryRow {
 	// Built from fieldIds rather than by ranging the map: a Go map has no order, and a
 	// summary whose columns reshuffle between requests is unreadable.
-	fieldTotals := make([]structs.ReceiptSummaryCustomFieldTotal, 0, len(fieldIds))
-	for _, fieldId := range fieldIds {
+	return structs.ReceiptSummaryRow{
+		Status:            status,
+		ReceiptCount:      accumulator.receiptCount,
+		Total:             accumulator.total,
+		CustomFieldTotals: accumulator.customFieldTotals(fieldNames),
+		CurrencyTotals:    accumulator.currencyTotals(fieldNames),
+	}
+}
+
+func (accumulator *summaryAccumulator) customFieldTotals(fieldNames map[uint]string) []structs.ReceiptSummaryCustomFieldTotal {
+	fieldTotals := make([]structs.ReceiptSummaryCustomFieldTotal, 0, len(accumulator.fieldIds))
+	for _, fieldId := range accumulator.fieldIds {
 		fieldTotals = append(fieldTotals, structs.ReceiptSummaryCustomFieldTotal{
 			CustomFieldId: fieldId,
 			Name:          fieldNames[fieldId],
 			Total:         accumulator.fieldTotals[fieldId],
 		})
 	}
+	return fieldTotals
+}
 
-	return structs.ReceiptSummaryRow{
-		Status:            status,
-		ReceiptCount:      accumulator.receiptCount,
-		Total:             accumulator.total,
-		CustomFieldTotals: fieldTotals,
+// currencyTotals lists one entry per currency present, the base currency first and the rest
+// by code, so the order is stable between requests.
+func (accumulator *summaryAccumulator) currencyTotals(fieldNames map[uint]string) []structs.ReceiptSummaryCurrencyTotal {
+	codes := make([]string, 0, len(accumulator.byCurrency))
+	for code := range accumulator.byCurrency {
+		codes = append(codes, code)
 	}
+	sort.Slice(codes, func(i, j int) bool {
+		if (codes[i] == accumulator.baseCurrency) != (codes[j] == accumulator.baseCurrency) {
+			return codes[i] == accumulator.baseCurrency
+		}
+		return codes[i] < codes[j]
+	})
+
+	totals := make([]structs.ReceiptSummaryCurrencyTotal, 0, len(codes))
+	for _, code := range codes {
+		row := accumulator.byCurrency[code]
+		totals = append(totals, structs.ReceiptSummaryCurrencyTotal{
+			Currency:          code,
+			ReceiptCount:      row.receiptCount,
+			Total:             row.total,
+			CustomFieldTotals: row.customFieldTotals(fieldNames),
+		})
+	}
+	return totals
 }
 
 // emptyReceiptSummary is the off state: a well-formed 200 with nothing in it. Every
@@ -395,7 +485,7 @@ func emptyReceiptSummary(
 	configurationGroupId uint,
 	position models.ReceiptSummaryPosition,
 ) structs.ReceiptSummary {
-	return structs.ReceiptSummary{
+	summary := structs.ReceiptSummary{
 		Enabled:              false,
 		ConfigurationGroupId: configurationGroupId,
 		// Normalized even in the off state: loadSettings maps a missing row to a ZERO
@@ -408,4 +498,6 @@ func emptyReceiptSummary(
 		},
 		Statuses: []structs.ReceiptSummaryRow{},
 	}
+	summary.Overall.CurrencyTotals = []structs.ReceiptSummaryCurrencyTotal{}
+	return summary
 }

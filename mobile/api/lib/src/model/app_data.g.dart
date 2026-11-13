@@ -40,6 +40,8 @@ class _$AppData extends AppData {
   @override
   final String? timeZone;
   @override
+  final String? defaultCurrency;
+  @override
   final BuiltList<Icon> icons;
   @override
   final BuiltList<String> appPermissions;
@@ -72,6 +74,7 @@ class _$AppData extends AppData {
       this.currencySymbolPosition,
       this.currencyHideDecimalPlaces,
       this.timeZone,
+      this.defaultCurrency,
       required this.icons,
       required this.appPermissions,
       required this.groupPermissions,
@@ -106,6 +109,7 @@ class _$AppData extends AppData {
         currencySymbolPosition == other.currencySymbolPosition &&
         currencyHideDecimalPlaces == other.currencyHideDecimalPlaces &&
         timeZone == other.timeZone &&
+        defaultCurrency == other.defaultCurrency &&
         icons == other.icons &&
         appPermissions == other.appPermissions &&
         groupPermissions == other.groupPermissions &&
@@ -133,6 +137,7 @@ class _$AppData extends AppData {
     _$hash = $jc(_$hash, currencySymbolPosition.hashCode);
     _$hash = $jc(_$hash, currencyHideDecimalPlaces.hashCode);
     _$hash = $jc(_$hash, timeZone.hashCode);
+    _$hash = $jc(_$hash, defaultCurrency.hashCode);
     _$hash = $jc(_$hash, icons.hashCode);
     _$hash = $jc(_$hash, appPermissions.hashCode);
     _$hash = $jc(_$hash, groupPermissions.hashCode);
@@ -162,6 +167,7 @@ class _$AppData extends AppData {
           ..add('currencySymbolPosition', currencySymbolPosition)
           ..add('currencyHideDecimalPlaces', currencyHideDecimalPlaces)
           ..add('timeZone', timeZone)
+          ..add('defaultCurrency', defaultCurrency)
           ..add('icons', icons)
           ..add('appPermissions', appPermissions)
           ..add('groupPermissions', groupPermissions)
@@ -254,6 +260,11 @@ class AppDataBuilder implements Builder<AppData, AppDataBuilder> {
   String? get timeZone => _$this._timeZone;
   set timeZone(String? timeZone) => _$this._timeZone = timeZone;
 
+  String? _defaultCurrency;
+  String? get defaultCurrency => _$this._defaultCurrency;
+  set defaultCurrency(String? defaultCurrency) =>
+      _$this._defaultCurrency = defaultCurrency;
+
   ListBuilder<Icon>? _icons;
   ListBuilder<Icon> get icons => _$this._icons ??= ListBuilder<Icon>();
   set icons(ListBuilder<Icon>? icons) => _$this._icons = icons;
@@ -315,6 +326,7 @@ class AppDataBuilder implements Builder<AppData, AppDataBuilder> {
       _currencySymbolPosition = $v.currencySymbolPosition;
       _currencyHideDecimalPlaces = $v.currencyHideDecimalPlaces;
       _timeZone = $v.timeZone;
+      _defaultCurrency = $v.defaultCurrency;
       _icons = $v.icons.toBuilder();
       _appPermissions = $v.appPermissions.toBuilder();
       _groupPermissions = $v.groupPermissions.toBuilder();
@@ -361,6 +373,7 @@ class AppDataBuilder implements Builder<AppData, AppDataBuilder> {
             currencySymbolPosition: currencySymbolPosition,
             currencyHideDecimalPlaces: currencyHideDecimalPlaces,
             timeZone: timeZone,
+            defaultCurrency: defaultCurrency,
             icons: icons.build(),
             appPermissions: appPermissions.build(),
             groupPermissions: groupPermissions.build(),

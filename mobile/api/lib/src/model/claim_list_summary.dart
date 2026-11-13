@@ -3,6 +3,8 @@
 //
 
 // ignore_for_file: unused_element
+import 'package:openapi/src/model/claim_currency_total.dart';
+import 'package:built_collection/built_collection.dart';
 import 'package:built_value/built_value.dart';
 import 'package:built_value/serializer.dart';
 
@@ -16,6 +18,7 @@ part 'claim_list_summary.g.dart';
 /// * [awaitingCount] - Number of claims with awaitingSettlement true
 /// * [outstandingTotal] - Sum of outstandingAmount over the claims with awaitingSettlement true
 /// * [oldestDaysWaiting] - The largest daysWaiting in the list; absent when no claim has one
+/// * [outstandingTotals] - outstandingTotal per claim currency, by code, over the claims with awaitingSettlement true. Claims of one group share its base currency, so only the All group can show several. outstandingTotal is the total of the one currency present, else of the install default currency. Always present; empty when nothing is awaiting.
 @BuiltValue()
 abstract class ClaimListSummary implements Built<ClaimListSummary, ClaimListSummaryBuilder> {
   /// Today in the app time zone (yyyy-MM-dd), the day daysWaiting is counted to
@@ -37,6 +40,10 @@ abstract class ClaimListSummary implements Built<ClaimListSummary, ClaimListSumm
   /// The largest daysWaiting in the list; absent when no claim has one
   @BuiltValueField(wireName: r'oldestDaysWaiting')
   int? get oldestDaysWaiting;
+
+  /// outstandingTotal per claim currency, by code, over the claims with awaitingSettlement true. Claims of one group share its base currency, so only the All group can show several. outstandingTotal is the total of the one currency present, else of the install default currency. Always present; empty when nothing is awaiting.
+  @BuiltValueField(wireName: r'outstandingTotals')
+  BuiltList<ClaimCurrencyTotal>? get outstandingTotals;
 
   ClaimListSummary._();
 
@@ -86,6 +93,13 @@ class _$ClaimListSummarySerializer implements PrimitiveSerializer<ClaimListSumma
       yield serializers.serialize(
         object.oldestDaysWaiting,
         specifiedType: const FullType(int),
+      );
+    }
+    if (object.outstandingTotals != null) {
+      yield r'outstandingTotals';
+      yield serializers.serialize(
+        object.outstandingTotals,
+        specifiedType: const FullType(BuiltList, [FullType(ClaimCurrencyTotal)]),
       );
     }
   }
@@ -145,6 +159,13 @@ class _$ClaimListSummarySerializer implements PrimitiveSerializer<ClaimListSumma
             specifiedType: const FullType(int),
           ) as int;
           result.oldestDaysWaiting = valueDes;
+          break;
+        case r'outstandingTotals':
+          final valueDes = serializers.deserialize(
+            value,
+            specifiedType: const FullType(BuiltList, [FullType(ClaimCurrencyTotal)]),
+          ) as BuiltList<ClaimCurrencyTotal>;
+          result.outstandingTotals.replace(valueDes);
           break;
         default:
           unhandled.add(key);

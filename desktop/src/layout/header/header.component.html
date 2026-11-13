@@ -47,6 +47,22 @@
       >
         <mat-icon>request_quote</mat-icon>
       </button>
+      @if (canViewProcessing()) {
+        <button
+          mat-icon-button
+          color="accent"
+          class="nav-button"
+          matTooltip="Processing"
+          data-testid="header-processing-link"
+          routerLinkActive="active-link"
+          [routerLink]="processingHeaderLink()"
+          [matBadge]="processingCount()"
+          [matBadgeHidden]="!processingCount()"
+          matBadgeColor="warn"
+        >
+          <mat-icon>pending_actions</mat-icon>
+        </button>
+      }
       @for (shortcut of userPreferences()?.userShortcuts ?? []; track shortcut["id"]) {
         <a [href]="shortcut.url">
           <button

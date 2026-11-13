@@ -48,6 +48,7 @@ func diffReceiptSnapshots(before *models.Receipt, after models.Receipt, context 
 
 	diff.compare(structs.ReceiptHistoryFieldName, "", textSide(from.Name), textSide(after.Name))
 	diff.compare(structs.ReceiptHistoryFieldAmount, "", currencySide(&from.Amount), currencySide(&after.Amount))
+	diff.currencyBlock(from, after)
 	diff.compare(structs.ReceiptHistoryFieldDate, "", calendarDaySide(&from.Date), calendarDaySide(&after.Date))
 	diff.compare(structs.ReceiptHistoryFieldGroup, "", diff.groupSide(from.GroupId), diff.groupSide(after.GroupId))
 	diff.compare(structs.ReceiptHistoryFieldPaidBy, "", userSide(from.PaidByUserID), userSide(after.PaidByUserID))

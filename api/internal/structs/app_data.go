@@ -15,6 +15,9 @@ type AppData struct {
 	// TimeZone is the resolved app time zone (an IANA name, "UTC" when unset or
 	// invalid) clients work out "today" and display instants in.
 	TimeZone         string                     `json:"timeZone"`
+	// DefaultCurrency is the resolved install default ISO 4217 currency ("USD" when unset),
+	// never "". Multicurrency, fork feature.
+	DefaultCurrency string `json:"defaultCurrency"`
 	Categories       []models.Category          `json:"categories"`
 	Tags             []models.Tag               `json:"tags"`
 	GroupCategories  map[uint][]models.Category `json:"groupCategories"`

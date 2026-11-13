@@ -12,6 +12,13 @@ type GroupReceiptSettings struct {
 	HideShareTags         bool `gorm:"not null;default:false" json:"hideShareTags"`
 	HideComments          bool `gorm:"not null;default:false" json:"hideComments"`
 
+	// Multicurrency (fork feature). DefaultCurrency is the group's stored ISO 4217 default,
+	// "" meaning "the install default". The RESOLVED value, which is also the group's base
+	// currency (the one its claims are reckoned in), is BaseCurrency: transient, filled by
+	// LoadSettingsProjections at every serialization boundary, never empty on the wire.
+	DefaultCurrency string `gorm:"type:varchar(3)" json:"defaultCurrency"`
+	BaseCurrency    string `gorm:"-" json:"baseCurrency"`
+
 	// Quick scan field configuration. Controls which fields appear in the quick-scan dialog and
 	// which the user must provide. Paid-by/status always resolve to a value (a configured default
 	// backfills them when not shown+required), so receipts are never left without one.
