@@ -29,10 +29,20 @@ import (
 type ReceiptMulticurrency struct {
 	Currency           string           `gorm:"type:varchar(3)" json:"currency"`
 	BaseAmount         *decimal.Decimal `gorm:"type:decimal(13,3)" json:"baseAmount,omitempty"`
+	// BaseAmountCurrency is the currency BaseAmount is in: the group's resolved base at the moment
+	// the conversion was written. Server-set and read-only (the command has no such key). A
+	// conversion counts as converted only while it equals the group's CURRENT base, so changing a
+	// group's default currency later never silently relabels evidence.
+	BaseAmountCurrency string           `gorm:"type:varchar(3)" json:"baseAmountCurrency,omitempty"`
 	ExchangeRate       *decimal.Decimal `gorm:"type:decimal(20,6)" json:"exchangeRate,omitempty"`
 	ExchangeRateDate   *CalendarDay     `json:"exchangeRateDate,omitempty"`
 	ExchangeRateSource string           `gorm:"size:255" json:"exchangeRateSource,omitempty"`
 	ConversionNote     string           `gorm:"-" json:"conversionNote,omitempty"`
+}
+
+// ConvertedTo reports whether the receipt carries a conversion into code.
+func (receipt Receipt) ConvertedTo(code string) bool {
+	return receipt.BaseAmount != nil && receipt.BaseAmountCurrency == code
 }
 
 // HasConversion reports whether the receipt carries a recorded conversion.

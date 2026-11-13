@@ -4716,7 +4716,7 @@ for older receipts. Unknown code: 400 under `currency`.
 
 `Receipt` and `UpsertReceiptCommand` gain optional `currency`, `baseAmount`, `exchangeRate`,
 `exchangeRateDate` (bare `yyyy-MM-dd`), `exchangeRateSource` (<= 255); `Receipt` also gains the
-read-only `conversionNote`. `SystemSettings` / `UpsertSystemSettingsCommand` / `AppData` gain
+read-only `conversionNote` and the read-only server-set `baseAmountCurrency` (the currency `baseAmount` is in). `SystemSettings` / `UpsertSystemSettingsCommand` / `AppData` gain
 `defaultCurrency` (the AppData value is **resolved**, never `""`). `GroupReceiptSettings` gains
 `defaultCurrency` (stored, `""` = install default) and `baseCurrency` (**resolved**, never `""`, the
 currency the group's claims are reckoned in; it rides everywhere the settings do: AppData groups,
@@ -4764,9 +4764,21 @@ read for no gain.
   of columns already loaded, so every read path gets it) when `baseAmount` and amount x rate differ
   by more than 1%. It never blocks a save.
 - Send `null` or omit a decimal key, never `""` (the command fields are `*decimal.Decimal`).
-- A recorded conversion is relative to the base currency **at the time**. Changing a group's
-  `defaultCurrency` later does not re-derive stored conversions; receipts then read as converted
-  into a base that is no longer the group's. Documented limitation, not guarded.
+- **The conversion is stamped with the base currency it was written against**:
+  `Receipt.baseAmountCurrency` (column `base_amount_currency`, `varchar(3)`; named so it cannot be
+  confused with `GroupReceiptSettings.baseCurrency`). It is server-set and read-only (the command
+  field is `json:"-"`, so a request cannot write it); the resolver sets it to the group's resolved
+  base whenever a conversion is written or derived, clears it with the conversion, and keeps the
+  stored stamp when an update sends no conversion keys. **A conversion counts only while the stamp
+  equals the claim's current base** (`models.Receipt.ConvertedTo`; `claim_currency.go`
+  `foldClaimReceipts`; the packet's `countedAmount`). Otherwise the receipt is unconverted: in
+  `unconvertedReceiptCount`, in `unconvertedTotals` at its own amount, and in the packet's
+  "Not converted" block, while its per-receipt section still shows the stored conversion in its own
+  currency ("Amount in USD", "Not converted to EUR: the recorded conversion is to USD") and
+  `receipts.csv` keeps `Base Amount` and `Base Currency`. Re-entering a conversion stamps the new
+  base. A group move still drops the conversion. The Receipt Summary never used `baseAmount`.
+  Migration `stamp-receipt-conversion-currency` stamps any row with a `baseAmount` and no stamp with
+  its group's current base (no production row had one; it exists for dev databases).
 
 ### Migrations
 
@@ -4815,7 +4827,7 @@ Custom field values carry no currency of their own and are attributed to their r
 ### Claims
 
 A claim is reckoned in its group's base currency (`Claim.currency`). A linked receipt counts at its
-`amount` if in the base currency (or empty), else at its `baseAmount`, else it is **unconverted**:
+`amount` if in the base currency (or empty), else at its `baseAmount` **if `baseAmountCurrency` equals the claim's currency**, else it is **unconverted**:
 out of every figure (`receiptsTotal`, claimed, outstanding), counted in `unconvertedReceiptCount`
 and totalled per currency in `unconvertedTotals`. `receiptCount` still counts all linked receipts.
 Money strings use the base currency's exponent (`5000` for JPY, `12.345` for JOD; USD is unchanged).
@@ -4832,7 +4844,7 @@ column; category subtotals and the grand total use only base and converted recei
 receipts are listed in a **Not converted** block per currency with a total, and appear in no subtotal.
 Each receipt section states its currency, and for a converted one the base amount, `1 EUR = 1.085
 USD`, rate date, source and any conversion note. `manifest.json` carries the new `Claim` fields.
-`receipts.csv` gains trailing `Currency`, `Base Amount`, `Exchange Rate`, `Rate Date`, `Rate Source`
+`receipts.csv` gains trailing `Currency`, `Base Amount`, `Base Currency`, `Exchange Rate`, `Rate Date`, `Rate Source`
 (before the packet-only `Images` column, which stays last); `items.csv` gains `Currency`.
 
 ### Shared files this feature edits

@@ -15,6 +15,7 @@ import (
 const (
 	backfillReceiptCurrencyMigration      = "backfill-receipt-currency"
 	upgradeDefaultPromptCurrencyMigration = "upgrade-default-prompt-currency"
+	stampConversionCurrencyMigration      = "stamp-receipt-conversion-currency"
 )
 
 // backfillReceiptCurrency labels every receipt that has no currency with the install default.
@@ -58,4 +59,33 @@ func upgradeDefaultPromptCurrency(tx *gorm.DB) error {
 
 func normalizePromptText(text string) string {
 	return strings.TrimSpace(strings.ReplaceAll(text, "\r\n", "\n"))
+}
+
+// stampConversionCurrency records, for a receipt that has a base amount but no stamp, the group's
+// current base currency as the one the conversion is in. Such rows can only predate the stamp
+// (no production install had conversions yet), so the group's current base is the best statement
+// of what the user meant.
+func stampConversionCurrency(tx *gorm.DB) error {
+	var receipts []models.Receipt
+	err := tx.Select("id", "group_id").
+		Where("base_amount IS NOT NULL AND (base_amount_currency IS NULL OR base_amount_currency = '')").
+		Find(&receipts).Error
+	if err != nil || len(receipts) == 0 {
+		return err
+	}
+
+	groupIds := make([]uint, 0, len(receipts))
+	for _, receipt := range receipts {
+		groupIds = append(groupIds, receipt.GroupId)
+	}
+	bases := GroupBaseCurrencies(tx, groupIds)
+
+	for _, receipt := range receipts {
+		err := tx.Model(&models.Receipt{}).Where("id = ?", receipt.ID).
+			UpdateColumn("base_amount_currency", bases[receipt.GroupId]).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

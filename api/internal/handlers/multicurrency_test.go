@@ -370,6 +370,7 @@ func seedForeignReceipt(t *testing.T, groupId uint, userId uint, amount string, 
 	if baseAmount != "" {
 		base := decimal.RequireFromString(baseAmount)
 		receipt.BaseAmount = &base
+		receipt.BaseAmountCurrency = repositories.GroupBaseCurrency(nil, groupId)
 	}
 	if err := repositories.GetDB().Create(&receipt).Error; err != nil {
 		t.Fatalf("seed receipt: %v", err)
@@ -504,7 +505,7 @@ func TestMulticurrency_ClaimPacketEndToEnd(t *testing.T) {
 
 	rows := readCsv(t, packet.files["receipts.csv"])
 	header := strings.Join(rows[0], ",")
-	if !strings.Contains(header, "Currency,Base Amount,Exchange Rate,Rate Date,Rate Source,Images") {
+	if !strings.Contains(header, "Currency,Base Amount,Base Currency,Exchange Rate,Rate Date,Rate Source,Images") {
 		t.Errorf("receipts.csv header = %s", header)
 	}
 
@@ -543,5 +544,62 @@ func TestMulticurrency_SummaryLegacyTotalIsBaseCurrencyOnly(t *testing.T) {
 	wire, _ := json.Marshal(summary)
 	if !strings.Contains(string(wire), `"currencyTotals":[{`) || strings.Contains(string(wire), `"currencyTotals":null`) {
 		t.Errorf("wire: %s", wire)
+	}
+}
+
+func TestMulticurrency_ConversionIsStampedAndStopsCountingWhenTheBaseCurrencyChanges(t *testing.T) {
+	defer tearDownGenericHandlerTest()
+	stubPacketPdf(t)
+	userId, groupId := seedRestrictedReceiptCreator(t, nil)
+	grantGroupPerms(t, userId, groupId, permissions.GroupReceiptsRead, permissions.GroupReceiptsCreate, permissions.GroupReceiptsUpdate)
+
+	created := decodeReceipt(t, postReceipt(userId, receiptBody(groupId, userId, `"currency":"GBP","baseAmount":"125.00"`)))
+	if got := storedReceipt(t, created.ID); got.BaseAmountCurrency != "USD" {
+		t.Fatalf("the conversion is stamped %q, want the group's base USD", got.BaseAmountCurrency)
+	}
+
+	// A request cannot write the stamp.
+	forged := decodeReceipt(t, postReceipt(userId, receiptBody(groupId, userId, `"currency":"GBP","baseAmount":"1.00","baseAmountCurrency":"JPY"`)))
+	if got := storedReceipt(t, forged.ID); got.BaseAmountCurrency != "USD" {
+		t.Errorf("a request wrote the stamp: %q", got.BaseAmountCurrency)
+	}
+
+	claim := seedClaimRow(t, groupId, userId, "Trip")
+	linkReceipts(t, claim.ID, created.ID)
+	if view := getClaim(t, userId, claim.ID); view.ReceiptsTotal != "125.00" || view.UnconvertedReceiptCount != 0 {
+		t.Fatalf("before: total %s unconverted %d", view.ReceiptsTotal, view.UnconvertedReceiptCount)
+	}
+
+	// The group moves to EUR: the USD conversion no longer describes the claim's currency.
+	setGroupDefaultCurrency(t, groupId, "EUR")
+	view := getClaim(t, userId, claim.ID)
+	if view.Currency != "EUR" || view.ReceiptsTotal != "0.00" || view.UnconvertedReceiptCount != 1 ||
+		len(view.UnconvertedTotals) != 1 || view.UnconvertedTotals[0] != (structs.ClaimCurrencyTotal{Currency: "GBP", Total: "100.00"}) {
+		t.Errorf("after: %+v", view)
+	}
+
+	packet := downloadPacket(t, userId, claim.ID)
+	html := packet.html()
+	for _, want := range []string{"<h3>Not converted</h3>", "Amount in USD", "125.00", "Not converted to EUR: the recorded conversion is to USD"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("the PDF does not print %q", want)
+		}
+	}
+	if !strings.Contains(string(packet.files["receipts.csv"]), ",GBP,125,USD,") {
+		t.Errorf("receipts.csv hides the stored conversion: %s", packet.files["receipts.csv"])
+	}
+
+	// Re-entering a conversion stamps the new base.
+	body := fmt.Sprintf(`{"name":"R","amount":"100.00","currency":"GBP","baseAmount":"118.00","date":"2026-09-01T00:00:00Z","groupId":%d,"paidByUserId":%d,"status":"OPEN"}`, groupId, userId)
+	w, r := updateReceiptRequest(created.ID, userId, body)
+	UpdateReceipt(w, r)
+	if w.Code != http.StatusOK {
+		t.Fatalf("update: %d %s", w.Code, w.Body.String())
+	}
+	if got := storedReceipt(t, created.ID); got.BaseAmountCurrency != "EUR" {
+		t.Errorf("re-entered conversion stamped %q", got.BaseAmountCurrency)
+	}
+	if view := getClaim(t, userId, claim.ID); view.ReceiptsTotal != "118.00" || view.UnconvertedReceiptCount != 0 {
+		t.Errorf("re-converted: total %s unconverted %d", view.ReceiptsTotal, view.UnconvertedReceiptCount)
 	}
 }

@@ -28,7 +28,7 @@ func foldClaimReceipts(receipts []repositories.LinkedReceipt, baseCurrency strin
 		switch {
 		case receipt.Currency == "" || receipt.Currency == baseCurrency:
 			figures.counted = figures.counted.Add(receipt.Amount)
-		case receipt.BaseAmount != nil:
+		case receipt.BaseAmount != nil && receipt.BaseAmountCurrency == baseCurrency:
 			figures.counted = figures.counted.Add(*receipt.BaseAmount)
 		default:
 			figures.unconvertedCount++

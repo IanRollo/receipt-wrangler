@@ -16,8 +16,8 @@ func TestShouldBuildReceiptCsv(t *testing.T) {
 	defer repositories.TruncateTestDb()
 
 	expected :=
-		"Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date,Currency,Base Amount,Exchange Rate,Rate Date,Rate Source\n" +
-			"1,2025-01-01,2025-01-01,test,Jim,123.45,OPEN,\"Groceries,Food\",\"Bill,Essential\",2025-01-01,,,,,\n"
+		"Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date,Currency,Base Amount,Base Currency,Exchange Rate,Rate Date,Rate Source\n" +
+			"1,2025-01-01,2025-01-01,test,Jim,123.45,OPEN,\"Groceries,Food\",\"Bill,Essential\",2025-01-01,,,,,,\n"
 
 	date := time.Date(
 		2025, 1, 1, 0, 0, 0, 0, time.UTC)

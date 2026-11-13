@@ -403,3 +403,28 @@ func TestAutoMigrateWidensReceiptAmountWithoutLosingRows(t *testing.T) {
 		t.Errorf("three-place amount stored as %s", reloaded.Amount)
 	}
 }
+
+func TestStampConversionCurrency_StampsOnlyRowsWithAnUnstampedConversion(t *testing.T) {
+	defer TruncateTestDb()
+	seedSystemSettingsWithCurrency(t, "EUR")
+	CreateTestGroupWithUsers()
+
+	base := decimal.NewFromInt(5)
+	converted := models.Receipt{Name: "c", GroupId: 1, PaidByUserID: 1, Status: models.OPEN, Amount: decimal.NewFromInt(1)}
+	converted.Currency = "GBP"
+	converted.BaseAmount = &base
+	plain := models.Receipt{Name: "p", GroupId: 1, PaidByUserID: 1, Status: models.OPEN, Amount: decimal.NewFromInt(1)}
+	plain.Currency = "EUR"
+	GetDB().Create(&converted)
+	GetDB().Create(&plain)
+
+	if err := stampConversionCurrency(GetDB()); err != nil {
+		t.Fatal(err)
+	}
+	var got, other models.Receipt
+	GetDB().First(&got, converted.ID)
+	GetDB().First(&other, plain.ID)
+	if got.BaseAmountCurrency != "EUR" || other.BaseAmountCurrency != "" {
+		t.Errorf("stamps: converted %q plain %q", got.BaseAmountCurrency, other.BaseAmountCurrency)
+	}
+}

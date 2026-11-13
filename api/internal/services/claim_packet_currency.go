@@ -34,7 +34,7 @@ func (builder *claimPacketBuilder) countedAmount(receipt models.Receipt) (decima
 	if builder.packetCurrencyOf(receipt) == builder.claim.Currency {
 		return receipt.Amount, true
 	}
-	if receipt.BaseAmount != nil {
+	if receipt.ConvertedTo(builder.claim.Currency) {
 		return *receipt.BaseAmount, true
 	}
 	return decimal.Zero, false
@@ -120,9 +120,18 @@ func (builder *claimPacketBuilder) addConversionFields(section *packetReceiptSec
 		if receipt.BaseAmount == nil {
 			extra = append(extra, packetField{"Conversion", "Not converted: no amount in " + base + " was recorded, so this receipt is not counted in the claim's figures"})
 		} else {
-			extra = append(extra, packetField{"Amount in " + base, builder.moneyIn(*receipt.BaseAmount, base)})
+			// The conversion is shown in the currency it was recorded in, which is the claim's
+			// unless the group's base currency changed afterwards.
+			recorded := receipt.BaseAmountCurrency
+			if recorded == "" {
+				recorded = base
+			}
+			if recorded != base {
+				extra = append(extra, packetField{"Conversion", "Not converted to " + base + ": the recorded conversion is to " + recorded + ", so this receipt is not counted in the claim's figures"})
+			}
+			extra = append(extra, packetField{"Amount in " + recorded, builder.moneyIn(*receipt.BaseAmount, recorded)})
 			if receipt.ExchangeRate != nil {
-				extra = append(extra, packetField{"Exchange rate", "1 " + code + " = " + receipt.ExchangeRate.String() + " " + base})
+				extra = append(extra, packetField{"Exchange rate", "1 " + code + " = " + receipt.ExchangeRate.String() + " " + recorded})
 			}
 			if receipt.ExchangeRateDate != nil && !receipt.ExchangeRateDate.IsZero() {
 				extra = append(extra, packetField{"Rate date", receipt.ExchangeRateDate.UTC().Format(time.DateOnly)})

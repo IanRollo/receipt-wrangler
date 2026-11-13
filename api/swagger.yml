@@ -5942,6 +5942,14 @@ components:
             What the receipt came to in its group's base currency (decimal string), as the user
             recorded or the server derived it. Only present when the currency differs from the
             base currency and a conversion was recorded.
+        baseAmountCurrency:
+          type: string
+          description: >-
+            Read-only, server-set. The ISO 4217 currency baseAmount is in: the group's base
+            currency at the moment the conversion was written. A conversion counts as converted
+            (claim figures, packet) only while this equals the group's current base currency;
+            otherwise the receipt is treated as unconverted and the stored conversion is shown
+            as recorded. Not to be confused with GroupReceiptSettings.baseCurrency.
         exchangeRate:
           type: string
           description: >-

@@ -46,6 +46,9 @@ type LinkedReceipt struct {
 	// the user recorded a conversion, what it came to in the group's base currency.
 	Currency   string
 	BaseAmount *decimal.Decimal
+	// BaseAmountCurrency is the currency BaseAmount was recorded in; it counts only while it
+	// equals the claim's current base currency.
+	BaseAmountCurrency string
 }
 
 // ReceiptClaimLink names the claim a receipt is in.
@@ -126,7 +129,7 @@ func (repository ClaimRepository) GetLinkedReceipts(claimIds []uint) (map[uint][
 	var rows []LinkedReceipt
 	err := repository.GetDB().
 		Table("claim_receipts").
-		Select("claim_receipts.claim_id AS claim_id, receipts.id AS receipt_id, receipts.group_id AS group_id, receipts.paid_by_user_id AS paid_by_user_id, receipts.amount AS amount, receipts.currency AS currency, receipts.base_amount AS base_amount").
+		Select("claim_receipts.claim_id AS claim_id, receipts.id AS receipt_id, receipts.group_id AS group_id, receipts.paid_by_user_id AS paid_by_user_id, receipts.amount AS amount, receipts.currency AS currency, receipts.base_amount AS base_amount, receipts.base_amount_currency AS base_amount_currency").
 		Joins("JOIN receipts ON receipts.id = claim_receipts.receipt_id").
 		Joins("JOIN claims ON claims.id = claim_receipts.claim_id").
 		Where("claim_receipts.claim_id IN ? AND receipts.group_id = claims.group_id", claimIds).

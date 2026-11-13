@@ -34,6 +34,8 @@ type UpsertReceiptCommand struct {
 	ExchangeRate       *decimal.Decimal `json:"exchangeRate"`
 	ExchangeRateDate   *string          `json:"exchangeRateDate"`
 	ExchangeRateSource *string          `json:"exchangeRateSource"`
+	// BaseAmountCurrency is server-set by the currency resolver (never read from a request).
+	BaseAmountCurrency string `json:"-"`
 	// EmailInbox and EmailSender are server-set by the email task and never
 	// read from a request (json:"-"); ToReceipt copies them explicitly.
 	EmailInbox  string `json:"-"`
@@ -128,6 +130,7 @@ func (receipt *UpsertReceiptCommand) ToReceipt() (models.Receipt, error) {
 
 	// json:"-" keeps these off the round trip above, so they are copied here.
 	result.Currency = currency.Normalize(receipt.Currency)
+	result.BaseAmountCurrency = receipt.BaseAmountCurrency
 	result.EmailInbox = receipt.EmailInbox
 	result.EmailSender = receipt.EmailSender
 

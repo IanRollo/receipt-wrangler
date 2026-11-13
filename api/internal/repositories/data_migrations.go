@@ -37,6 +37,7 @@ var dataMigrations = []dataMigration{
 	{name: removeAppReceiptHistoryReadMigration, run: removeAppReceiptHistoryRead},
 	{name: backfillReceiptCurrencyMigration, run: backfillReceiptCurrency},
 	{name: upgradeDefaultPromptCurrencyMigration, run: upgradeDefaultPromptCurrency},
+	{name: stampConversionCurrencyMigration, run: stampConversionCurrency},
 }
 
 // RunDataMigrations applies any registered one-time data migrations that have

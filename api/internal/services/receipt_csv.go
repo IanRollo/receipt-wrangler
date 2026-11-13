@@ -51,6 +51,7 @@ func (service *ReceiptCsvService) BuildReceiptCsv(receipts []models.Receipt) (st
 		// Multicurrency (fork feature). Before the packet-only Images column, so that stays last.
 		"Currency",
 		"Base Amount",
+		"Base Currency",
 		"Exchange Rate",
 		"Rate Date",
 		"Rate Source",
@@ -89,6 +90,7 @@ func (service *ReceiptCsvService) BuildReceiptCsv(receipts []models.Receipt) (st
 			resolvedDateString,
 			receipt.Currency,
 			optionalDecimalString(receipt.BaseAmount),
+			receipt.BaseAmountCurrency,
 			optionalDecimalString(receipt.ExchangeRate),
 			optionalDayString(receipt.ExchangeRateDate),
 			render.SanitizeCSVField(receipt.ExchangeRateSource),

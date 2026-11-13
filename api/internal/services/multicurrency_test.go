@@ -158,6 +158,7 @@ func linkedForTest(id uint, amount string, code string, base string) repositorie
 	linked := repositories.LinkedReceipt{ReceiptId: id, Amount: mcDec(amount), Currency: code}
 	if base != "" {
 		linked.BaseAmount = mcDecPtr(base)
+		linked.BaseAmountCurrency = "USD"
 	}
 	return linked
 }
@@ -280,6 +281,7 @@ func packetReceiptForTest(id uint, name string, amount string, code string, base
 	receipt.Currency = code
 	if base != "" {
 		receipt.BaseAmount = mcDecPtr(base)
+		receipt.BaseAmountCurrency = "USD"
 		receipt.ExchangeRate = mcDecPtr("1.085")
 		day := models.NewCalendarDay(time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC))
 		receipt.ExchangeRateDate = &day
@@ -392,11 +394,11 @@ func TestReceiptCsv_GainsTrailingCurrencyColumns(t *testing.T) {
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(result.ReceiptCsvBytes)), "\n")
-	wantHeader := "Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date,Currency,Base Amount,Exchange Rate,Rate Date,Rate Source"
+	wantHeader := "Id,Added At,Receipt Date,Name,Paid By,Amount,Status,Categories,Tags,Resolved Date,Currency,Base Amount,Base Currency,Exchange Rate,Rate Date,Rate Source"
 	if strings.TrimSpace(lines[0]) != wantHeader {
 		t.Errorf("header = %s", lines[0])
 	}
-	if !strings.HasSuffix(strings.TrimSpace(lines[1]), ",EUR,108.5,1.085,2026-09-02,Embassy cashier rate") {
+	if !strings.HasSuffix(strings.TrimSpace(lines[1]), ",EUR,108.5,USD,1.085,2026-09-02,Embassy cashier rate") {
 		t.Errorf("row = %s", lines[1])
 	}
 

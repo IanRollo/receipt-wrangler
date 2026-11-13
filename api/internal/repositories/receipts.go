@@ -184,7 +184,7 @@ func (repository ReceiptRepository) UpdateReceipt(id string, command commands.Up
 		// Updates skips nil fields, so a conversion the resolver cleared (the receipt is now in
 		// the group's base currency) has to be written out explicitly.
 		txErr = tx.Model(&currentReceipt).
-			Select("BaseAmount", "ExchangeRate", "ExchangeRateDate", "ExchangeRateSource").
+			Select("BaseAmount", "BaseAmountCurrency", "ExchangeRate", "ExchangeRateDate", "ExchangeRateSource").
 			Updates(&updatedReceipt).Error
 		if txErr != nil {
 			return txErr

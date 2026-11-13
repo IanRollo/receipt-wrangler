@@ -155,6 +155,7 @@ func resolveReceiptConversion(
 		keepStored := existing != nil && existing.GroupId == command.GroupId && currency.Normalize(existing.Currency) == code
 		if keepStored {
 			command.BaseAmount = existing.BaseAmount
+			command.BaseAmountCurrency = existing.BaseAmountCurrency
 			command.ExchangeRate = existing.ExchangeRate
 			if existing.ExchangeRateDate != nil {
 				day := existing.ExchangeRateDate.UTC().Format("2006-01-02")
@@ -188,6 +189,12 @@ func resolveReceiptConversion(
 		command.Amount, baseCurrency, command.BaseAmount, command.ExchangeRate,
 	)
 
+	// The conversion is stamped with the base currency it was written against.
+	command.BaseAmountCurrency = ""
+	if command.BaseAmount != nil {
+		command.BaseAmountCurrency = baseCurrency
+	}
+
 	if command.ExchangeRateDate != nil && strings.TrimSpace(*command.ExchangeRateDate) == "" {
 		command.ExchangeRateDate = nil
 	}
@@ -206,6 +213,7 @@ func clearConversion(command *commands.UpsertReceiptCommand) {
 	command.ExchangeRate = nil
 	command.ExchangeRateDate = nil
 	command.ExchangeRateSource = nil
+	command.BaseAmountCurrency = ""
 }
 
 func itoa(value int) string {
@@ -224,7 +232,7 @@ func ResolveReceiptCurrencyForWrite(tx *gorm.DB, receiptId uint, command *comman
 		if db == nil {
 			db = GetDB()
 		}
-		err := db.Select("id", "group_id", "currency", "base_amount", "exchange_rate", "exchange_rate_date", "exchange_rate_source").
+		err := db.Select("id", "group_id", "currency", "base_amount", "base_amount_currency", "exchange_rate", "exchange_rate_date", "exchange_rate_source").
 			Limit(1).Find(&stored, receiptId).Error
 		if err != nil {
 			return err

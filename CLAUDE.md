@@ -829,6 +829,11 @@ their code (and a three-place amount through the existing display). See `api/CLA
 - **Precision.** Amounts are validated by the currency's exponent (JPY whole, USD 2, JOD 3) and
   refused, not rounded; only AI-sourced amounts are rounded (half-even). Storage widened to
   `decimal(13,3)` (AutoMigrate does the ALTER on Postgres/MySQL; untested there).
+- **Conversions are stamped.** `Receipt.baseAmountCurrency` (read-only, server-set) records the
+  base currency a `baseAmount` was written against; a conversion counts toward claim figures and
+  the packet only while it equals the group's *current* base, so changing a group's default
+  currency never silently relabels evidence (the receipt turns "unconverted" and its stored
+  conversion stays visible).
 - **Figures.** Receipt Summary's legacy `total` covers the base currency only, with
   `currencyTotals` per currency alongside. A claim counts base-currency receipts at their amount,
   converted ones at their recorded base amount, and reports the rest as unconverted. The packet's
