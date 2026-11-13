@@ -80,6 +80,8 @@ export * from './permissionScope';
 export * from './pieChartData';
 export * from './pieChartDataCommand';
 export * from './pieChartDataPoint';
+export * from './processingQueueItem';
+export * from './processingQueueList';
 export * from './prompt';
 export * from './queueName';
 export * from './quickScanDefaultPaidByType';

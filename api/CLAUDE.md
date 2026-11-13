@@ -4683,3 +4683,54 @@ Ghostscript. `services/claim_packet_test.go` covers the category fold, image and
 flattened to white, garbage rejected), the bounds, and that the normal CSV has no Images column. Image
 fixtures written by `CreateReceiptImage` are read-only on Windows (`utils.WriteFile` passes mode
 `777` decimal), so `removeStoredImages` chmods before removing.
+
+## Processing queue (fork feature)
+
+`GET /processingQueue/group/{groupId}` (`getProcessingQueueForGroup`, swagger tag `ProcessingQueue`)
+lists every quick scan and email upload task in asynq's pending, scheduled, active, retry and archived
+sets. Completed tasks are not listed (a succeeded quick scan leaves Redis at once; a succeeded email task
+lingers for `completedTaskRetention`, and a receipt already exists for it).
+
+- **Where the code lives.** `wranglerasynq/processing_queue.go` reads and decodes (it imports `services`,
+  so the reading cannot live in `services`); `services/processing_queue.go` applies visibility;
+  `handlers/processing_queue.go`, `routers/processing_queue.go` (mounted at `/api/processingQueue`),
+  `repositories/processing_queue.go` (system task ids), `structs/processing_queue.go` (the wire types).
+- **State mapping** (plain strings, `structs.ProcessingQueueState*`): pending and scheduled -> `QUEUED`,
+  active -> `PROCESSING`, retry -> `RETRYING`, archived -> `FAILED`. The task type comes from the asynq
+  task type (`receipt:quick_scan` / `email:process`); any other type in those queues is skipped.
+- **Visibility.** Each item is judged in its own group, never the one browsed: `group.activities.read` in
+  that group, and an item run by a member the caller cannot see there is hidden
+  (`ActivityVisibilityResolver`, the activity feed's own rule; an email upload has no uploader and stays
+  visible, like `ran_by_user_id IS NULL`). A real group is gated up front by `HandleRequest`; the
+  synthetic All group is not gated by its membership (it grants nothing) and lists every group where the
+  caller holds the read permission. `canBeRestarted` / `canRetryNow` are switched off for a group where the
+  caller lacks `group.activities.rerun`. A task whose payload does not decode, or whose group cannot be
+  resolved (email: `groupSettingsId` -> group), is logged and left out. The pure selection is
+  `filterProcessingQueueItems`, tested without a database.
+- **Cost.** `processingQueuePerStateCap` = 100 tasks read per queue state per call (page size 100, page 1),
+  so at most 1000 tasks are decoded. Pending lists oldest first, so past the cap it is the newest uploads
+  that are cut; `truncated` says the cap was hit. The cap applies before the group filter.
+- **`uploadedAt` is the stored file's modification time**, because asynq's `TaskInfo` has no enqueue time.
+  Absent when the file is gone. Items sort newest first by it, else by `lastFailedAt`.
+- **Why the item routes are keyed by queue and task id.** The existing preview / download / rerun routes
+  address a `system_tasks` row, and a pending, active or early-failing task has none. So
+  `GET /processingQueue/task/{queue}/{taskId}/sourceFile` (+ `/download`) and
+  `POST /processingQueue/task/{queue}/{taskId}/retry` work for every item. They reuse the same code:
+  `authorizeAndResolveSourceFile`, `writeSourceFilePreview` / `writeSourceFileDownload` (extracted from the
+  activity handlers in `handlers/system_task.go`) and `enforceActivityActorVisible`. An unknown task, a
+  queue that is not an upload queue and an undecodable payload all answer 403 with the access-denied body,
+  so the status is no oracle for task ids. `systemTaskId` is on an item when a row exists (lowest id of the
+  QUICK_SCAN / EMAIL_UPLOAD rows sharing the asynq id) so the activity routes can be used too.
+- **Retry.** `RunProcessingQueueTaskNow`: a `RETRYING` task is moved to pending immediately (the same
+  attempt asynq would make at `nextRetryAt`, so no new duplicate-receipt risk); a `FAILED` (archived) task
+  is rerun under the rerun endpoint's rules (`CanRerunTask` + `RerunSourceFilesPresent`). Pending, active,
+  scheduled and completed tasks are refused with a 400, since `Inspector.RunTask` does not refuse by state.
+  Gated on `group.activities.rerun`.
+- **Flags** reuse `flagsForState` (extracted from `resolveActivityFlags` in `source_file.go`), so the queue
+  and the activity feed cannot disagree about `hasSourceFile` / `canBeRestarted`.
+- **API-key scopes.** The three GETs classify as reads and the retry as a write by method alone;
+  `middleware/api_key_scope_processing_queue_test.go` pins it.
+- **Tests.** Mapping, decoding, cap, sort and the retry refusals use a fake `processingQueueLister` (no
+  Redis); visibility is `services/processing_queue_test.go`; system task ids are
+  `repositories/processing_queue_test.go`. The handlers are not covered by a Go test (they need Redis); they
+  were exercised against the local stack.

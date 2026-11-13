@@ -3264,6 +3264,129 @@ paths:
       security:
         - bearerAuth: [ ]
         - apiKeyAuth: [ ]
+  /processingQueue/group/{groupId}:
+    get:
+      tags:
+        - ProcessingQueue
+      summary: Get the processing queue for a group
+      description: >-
+        Lists the quick scan and email upload tasks that have not succeeded, read live from the
+        task queue: waiting, being processed, retrying after an error, or failed. Newest first.
+        Each item is judged in its own group, never the group being browsed. A real group is gated
+        on group.activities.read; the synthetic "All" group instead lists the items of every group
+        where the caller holds group.activities.read. In a group with member isolation, uploads run
+        by a member the caller cannot see are left out, as in the activity feed. At most 100 tasks
+        are read per queue state; `truncated` says when that cap was hit [SYSTEM USER]
+      operationId: getProcessingQueueForGroup
+      parameters:
+        - in: path
+          name: groupId
+          schema:
+            type: integer
+          required: true
+          description: Id of the group, or of the caller's "All" group
+      responses:
+        200:
+          description: The queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessingQueueList"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        500:
+          $ref: "#/components/responses/Internal"
+      security:
+        - bearerAuth: [ ]
+        - apiKeyAuth: [ ]
+  /processingQueue/task/{queue}/{taskId}/sourceFile:
+    get:
+      tags:
+        - ProcessingQueue
+      summary: Get a queued upload's source file
+      description: >-
+        Returns the upload behind a processing queue item, converted for display. Addressed by
+        queue and asynq task id because a task that has not finished a processing step has no
+        system task for /systemTask/{id}/sourceFile. Gated on group.activities.read in the task's
+        group; an unknown task answers like one in a group the caller cannot reach (403)
+      operationId: getProcessingQueueTaskSourceFile
+      parameters:
+        - $ref: "#/components/parameters/ProcessingQueueQueue"
+        - $ref: "#/components/parameters/ProcessingQueueTaskId"
+      responses:
+        200:
+          description: The upload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemTaskSourceFileView"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: The source file is no longer available
+        500:
+          $ref: "#/components/responses/Internal"
+      security:
+        - bearerAuth: [ ]
+        - apiKeyAuth: [ ]
+  /processingQueue/task/{queue}/{taskId}/sourceFile/download:
+    get:
+      tags:
+        - ProcessingQueue
+      summary: Download a queued upload's source file
+      description: >-
+        Returns the upload behind a processing queue item verbatim. Same addressing and gate as
+        getProcessingQueueTaskSourceFile
+      operationId: downloadProcessingQueueTaskSourceFile
+      parameters:
+        - $ref: "#/components/parameters/ProcessingQueueQueue"
+        - $ref: "#/components/parameters/ProcessingQueueTaskId"
+      responses:
+        200:
+          description: The upload
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        400:
+          $ref: "#/components/responses/BadRequest"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        404:
+          description: The source file is no longer available
+        500:
+          $ref: "#/components/responses/Internal"
+      security:
+        - bearerAuth: [ ]
+        - apiKeyAuth: [ ]
+  /processingQueue/task/{queue}/{taskId}/retry:
+    post:
+      tags:
+        - ProcessingQueue
+      summary: Retry a queued upload now
+      description: >-
+        Runs a RETRYING upload straight away instead of waiting for its next attempt, or reruns a
+        FAILED one whose file is still available (the same rule as rerunActivity). Any other state
+        is a 400. Gated on group.activities.rerun in the task's group
+      operationId: retryProcessingQueueTask
+      parameters:
+        - $ref: "#/components/parameters/ProcessingQueueQueue"
+        - $ref: "#/components/parameters/ProcessingQueueTaskId"
+      responses:
+        200:
+          $ref: "#/components/responses/Ok"
+        400:
+          $ref: "#/components/responses/BadRequest"
+        403:
+          $ref: "#/components/responses/Forbidden"
+        500:
+          $ref: "#/components/responses/Internal"
+      security:
+        - bearerAuth: [ ]
+        - apiKeyAuth: [ ]
   /systemTask/rerunActivity/{id}:
     post:
       tags:
@@ -4531,6 +4654,21 @@ components:
       in: header
       name: Authorization
       description: API Key in format v1.xxx.xxx.xxx
+  parameters:
+    ProcessingQueueQueue:
+      in: path
+      name: queue
+      required: true
+      schema:
+        type: string
+      description: The queue name from a processing queue item, quick_scan or email_receipt_processing
+    ProcessingQueueTaskId:
+      in: path
+      name: taskId
+      required: true
+      schema:
+        type: string
+      description: The asynqTaskId of a processing queue item
   responses:
     OidcFlowError:
       description: The flow could not be started
@@ -8137,6 +8275,108 @@ components:
                 Whether the upload behind this task is still on disk AND the caller may reach it.
                 Resolved per caller, since this listing is app-scoped and spans groups the caller
                 may not belong to.
+    ProcessingQueueList:
+      type: object
+      description: The quick scan and email upload tasks that have not succeeded
+      required:
+        - items
+        - truncated
+      properties:
+        items:
+          type: array
+          description: Newest first. Always present; empty when none.
+          items:
+            $ref: "#/components/schemas/ProcessingQueueItem"
+        truncated:
+          type: boolean
+          description: True when some queue state held more tasks than the 100 read, so the list may omit some
+    ProcessingQueueItem:
+      type: object
+      description: One quick scan or email upload task, read from the task queue
+      required:
+        - asynqTaskId
+        - queue
+        - state
+        - taskType
+        - groupId
+        - fileName
+        - retryCount
+        - maxRetries
+        - lastError
+        - hasSourceFile
+        - canBeRestarted
+        - canRetryNow
+      properties:
+        asynqTaskId:
+          type: string
+          description: The task id; with `queue`, addresses the /processingQueue/task routes
+        queue:
+          type: string
+          description: The task queue name, e.g. quick_scan or email_receipt_processing. Plain string
+        state:
+          type: string
+          description: >-
+            Plain string, not an enum; treat an unknown value as in progress. QUEUED is waiting
+            for a worker, PROCESSING is running now, RETRYING failed an attempt and has another
+            scheduled (see nextRetryAt), FAILED has used its retries and waits for a rerun
+        taskType:
+          type: string
+          description: QUICK_SCAN or EMAIL_UPLOAD. Plain string, not an enum
+        groupId:
+          type: integer
+          format: uint64
+          description: The group the upload belongs to
+        uploaderUserId:
+          type: integer
+          format: uint64
+          description: The user who ran the quick scan. Absent for email uploads
+        fileName:
+          type: string
+          description: The upload's original file name. Empty for an email with no attachment
+        emailSubject:
+          type: string
+          description: Email uploads only
+        emailSender:
+          type: string
+          description: Email uploads only
+        uploadedAt:
+          type: string
+          format: date-time
+          description: >-
+            Modification time of the stored upload, as the task queue does not record when a task
+            was enqueued. Absent once the file is gone
+        retryCount:
+          type: integer
+          description: Failed attempts so far
+        maxRetries:
+          type: integer
+          description: The most retries the queue will schedule after the first attempt
+        nextRetryAt:
+          type: string
+          format: date-time
+          description: When the next attempt runs. RETRYING only
+        lastError:
+          type: string
+          description: The last attempt's error. Empty if none
+        lastFailedAt:
+          type: string
+          format: date-time
+        hasSourceFile:
+          type: boolean
+          description: Whether the upload is still on disk and may be previewed or downloaded
+        canBeRestarted:
+          type: boolean
+          description: A FAILED upload whose file is still available, and the caller may rerun it
+        canRetryNow:
+          type: boolean
+          description: A RETRYING upload the caller may run now
+        systemTaskId:
+          type: integer
+          format: uint64
+          description: >-
+            The system task that /systemTask/{id}/sourceFile and /systemTask/rerunActivity/{id}
+            address. Absent until a processing step has finished and recorded one; use the
+            /processingQueue/task routes, which work for every item
     SystemTaskSourceFileView:
       type: object
       required:

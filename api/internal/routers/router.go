@@ -61,6 +61,9 @@ func BuildRootRouter() *chi.Mux {
 	// Reimbursement claims (fork feature)
 	rootRouter.Mount("/api/claim", BuildClaimRouter())
 
+	// Processing queue of quick scans and email uploads (fork feature)
+	rootRouter.Mount("/api/processingQueue", BuildProcessingQueueRouter())
+
 	// Tag Router
 	tagRouter := BuildTagRouter()
 	rootRouter.Mount("/api/tag", tagRouter)

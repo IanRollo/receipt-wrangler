@@ -96,6 +96,8 @@ import 'package:openapi/src/model/permission_scope.dart';
 import 'package:openapi/src/model/pie_chart_data.dart';
 import 'package:openapi/src/model/pie_chart_data_command.dart';
 import 'package:openapi/src/model/pie_chart_data_point.dart';
+import 'package:openapi/src/model/processing_queue_item.dart';
+import 'package:openapi/src/model/processing_queue_list.dart';
 import 'package:openapi/src/model/prompt.dart';
 import 'package:openapi/src/model/queue_name.dart';
 import 'package:openapi/src/model/quick_scan_default_paid_by_type.dart';
@@ -260,6 +262,8 @@ part 'serializers.g.dart';
   PieChartData,
   PieChartDataCommand,
   PieChartDataPoint,
+  ProcessingQueueItem,
+  ProcessingQueueList,
   Prompt,
   QueueName,
   QuickScanDefaultPaidByType,

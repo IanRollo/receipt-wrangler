@@ -16,6 +16,7 @@ api/notifications.service.ts
 api/oidc.service.ts
 api/oidcProvider.service.ts
 api/permission.service.ts
+api/processingQueue.service.ts
 api/prompt.service.ts
 api/receipt.service.ts
 api/receiptImage.service.ts
@@ -118,6 +119,8 @@ model/permissionScope.ts
 model/pieChartData.ts
 model/pieChartDataCommand.ts
 model/pieChartDataPoint.ts
+model/processingQueueItem.ts
+model/processingQueueList.ts
 model/prompt.ts
 model/queueName.ts
 model/quickScanDefaultPaidByType.ts

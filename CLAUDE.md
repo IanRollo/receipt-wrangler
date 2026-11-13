@@ -807,6 +807,24 @@ and paid. **Backend + desktop; mobile only carries the regenerated client.** See
 
 See `api/CLAUDE.md` → "Reimbursement claims (fork feature)".
 
+### Processing Queue (fork feature)
+
+A list of the quick scans and email uploads that have **not succeeded**: waiting, being processed,
+retrying after an error, or failed. **Backend first; the desktop page follows.** See `api/CLAUDE.md` →
+"Processing queue (fork feature)".
+
+- **Read from asynq, not the database.** `system_tasks` rows are written only as each step finishes,
+  and `SystemTaskStatus` is a closed enum, so "queued" and "in progress" have no row. A task that fails
+  before any AI step (for example no processing settings) never gets a row at all.
+- **State is a plain string**: `QUEUED`, `PROCESSING`, `RETRYING`, `FAILED`. Never an OpenAPI enum and
+  never a `SystemTaskStatus` value. Task type is a plain string too (`QUICK_SCAN` / `EMAIL_UPLOAD`).
+- **No new permissions.** Seeing an item, and its file, is `group.activities.read`; running one again is
+  `group.activities.rerun`; each in the item's **own** group. Member isolation hides other members'
+  uploads exactly as the activity feed does.
+- **The routes are keyed by queue + asynq task id**, not system task id, so they work for every item.
+  `systemTaskId` rides on an item when a row exists, for the existing activity routes.
+- Purely additive on the wire: new `/processingQueue/*` paths and `ProcessingQueue*` schemas only.
+
 ### State Management Patterns
 - **Backend**: Service layer handles business logic, repositories handle data access
 - **Desktop**: NGXS store with actions/selectors, persistent storage for auth/preferences

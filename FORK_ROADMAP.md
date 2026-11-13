@@ -142,6 +142,24 @@ Likely shape:
 
 Rough size: backend endpoint and desktop page in 2-3 days; mobile extra.
 
+**Status: backend built (2026-11-12); the desktop page is next.** `GET /processingQueue/group/{groupId}`
+lists the quick-scan and email tasks in asynq's pending, scheduled, active, retry and archived sets, with
+a plain-string state (`QUEUED` / `PROCESSING` / `RETRYING` / `FAILED`), attempt counts, next retry, last
+error and whether the file and a rerun are available. It is gated by the activity feed's own permissions
+in each item's group. Preview, download and "retry now" are keyed by queue and asynq task id, not system
+task id. See `api/CLAUDE.md` → "Processing queue (fork feature)". Corrections to the plan above:
+
+- **The existing preview/download/rerun routes are not enough.** They address a `system_tasks` row, and
+  a pending or active task has none, nor does one that fails before any AI step (for example no
+  receipt processing settings configured). Hence the `/processingQueue/task/{queue}/{taskId}/...` routes;
+  `systemTaskId` is on an item only when a row exists.
+- **"Uploaded at" is not recorded by asynq.** It is the stored file's modification time.
+- **A succeeded quick scan leaves Redis at once, but a succeeded email task lingers 6 hours**
+  (`completedTaskRetention`); the queue deliberately skips completed tasks, so neither shows.
+- **Retry now fits cleanly** (`RETRYING` only moves the attempt forward; `FAILED` follows the rerun
+  endpoint's rules), so it was built rather than left out.
+- At most 100 tasks are read per queue state, and a response flag `truncated` says when that bit.
+
 ## Considered and deferred: Google Drive mirror
 
 Nightly copy into `Receipts/<yyyy-mm>/` with a monthly spreadsheet linking to each image.

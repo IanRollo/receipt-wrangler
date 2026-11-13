@@ -97,6 +97,9 @@ doc/PermissionScope.md
 doc/PieChartData.md
 doc/PieChartDataCommand.md
 doc/PieChartDataPoint.md
+doc/ProcessingQueueApi.md
+doc/ProcessingQueueItem.md
+doc/ProcessingQueueList.md
 doc/Prompt.md
 doc/PromptApi.md
 doc/QueueName.md
@@ -206,6 +209,7 @@ lib/src/api/notifications_api.dart
 lib/src/api/oidc_api.dart
 lib/src/api/oidc_provider_api.dart
 lib/src/api/permission_api.dart
+lib/src/api/processing_queue_api.dart
 lib/src/api/prompt_api.dart
 lib/src/api/receipt_api.dart
 lib/src/api/receipt_image_api.dart
@@ -311,6 +315,8 @@ lib/src/model/permission_scope.dart
 lib/src/model/pie_chart_data.dart
 lib/src/model/pie_chart_data_command.dart
 lib/src/model/pie_chart_data_point.dart
+lib/src/model/processing_queue_item.dart
+lib/src/model/processing_queue_list.dart
 lib/src/model/prompt.dart
 lib/src/model/queue_name.dart
 lib/src/model/quick_scan_default_paid_by_type.dart
@@ -398,6 +404,9 @@ test/claim_receipts_command_test.dart
 test/claim_receipts_failure_test.dart
 test/claim_receipts_result_test.dart
 test/claim_test.dart
+test/processing_queue_api_test.dart
+test/processing_queue_item_test.dart
+test/processing_queue_list_test.dart
 test/receipt_history_actor_test.dart
 test/receipt_history_change_test.dart
 test/receipt_history_entry_test.dart

@@ -23,6 +23,7 @@ import 'package:openapi/src/api/notifications_api.dart';
 import 'package:openapi/src/api/oidc_api.dart';
 import 'package:openapi/src/api/oidc_provider_api.dart';
 import 'package:openapi/src/api/permission_api.dart';
+import 'package:openapi/src/api/processing_queue_api.dart';
 import 'package:openapi/src/api/prompt_api.dart';
 import 'package:openapi/src/api/receipt_api.dart';
 import 'package:openapi/src/api/receipt_image_api.dart';
@@ -175,6 +176,12 @@ class Openapi {
   /// by doing that all interceptors will not be executed
   PermissionApi getPermissionApi() {
     return PermissionApi(dio, serializers);
+  }
+
+  /// Get ProcessingQueueApi instance, base route and serializer can be overridden by a given but be careful,
+  /// by doing that all interceptors will not be executed
+  ProcessingQueueApi getProcessingQueueApi() {
+    return ProcessingQueueApi(dio, serializers);
   }
 
   /// Get PromptApi instance, base route and serializer can be overridden by a given but be careful,

@@ -242,12 +242,19 @@ func resolveActivityFlags(
 		return activityFlags{}, nil
 	}
 
+	return flagsForState(taskInfo.State, files), nil
+}
+
+// flagsForState is the rule resolveActivityFlags applies once it holds a task's
+// state and files, shared with the processing queue listing so the two cannot
+// drift.
+func flagsForState(state asynq.TaskState, files taskSourceFiles) activityFlags {
 	return activityFlags{
-		canBeRestarted: rerunnableState(taskInfo.State) && allFilesPresent(files.rerunPaths()),
-		hasSourceFile: offersSourceFile(taskInfo.State) &&
+		canBeRestarted: rerunnableState(state) && allFilesPresent(files.rerunPaths()),
+		hasSourceFile: offersSourceFile(state) &&
 			files.expectsSourceFile() &&
 			sourcePathUsable(files.Primary),
-	}, nil
+	}
 }
 
 // RerunSourceFilesPresent reports whether every file a rerun of this task would

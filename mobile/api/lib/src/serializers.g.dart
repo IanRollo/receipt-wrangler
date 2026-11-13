@@ -89,6 +89,8 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..add(PieChartData.serializer)
       ..add(PieChartDataCommand.serializer)
       ..add(PieChartDataPoint.serializer)
+      ..add(ProcessingQueueItem.serializer)
+      ..add(ProcessingQueueList.serializer)
       ..add(Prompt.serializer)
       ..add(QueueName.serializer)
       ..add(QuickScanDefaultPaidByType.serializer)
@@ -292,6 +294,10 @@ Serializers _$serializers = (Serializers().toBuilder()
       ..addBuilderFactory(
           const FullType(BuiltList, const [const FullType(PieChartDataPoint)]),
           () => ListBuilder<PieChartDataPoint>())
+      ..addBuilderFactory(
+          const FullType(
+              BuiltList, const [const FullType(ProcessingQueueItem)]),
+          () => ListBuilder<ProcessingQueueItem>())
       ..addBuilderFactory(
           const FullType(
               BuiltList, const [const FullType(ReceiptHistoryChange)]),
